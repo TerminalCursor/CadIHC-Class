@@ -1,7 +1,6 @@
 from ..interfaces.data.types import DataTypes, CategoryType
 from ..interfaces.models.types import ModelType
 from ..interfaces.config import CompleteConfig
-from typing import List
 
 
 def load_config(
@@ -10,7 +9,6 @@ def load_config(
     model_type: ModelType = ModelType.Attention,
     patches: int | None = None,
     patch_size: int = 16,
-    ablation_columns: List[int] = [],
     device: str = "cuda",
 ) -> CompleteConfig:
     """
@@ -31,13 +29,11 @@ def load_config(
         This function creates a CompleteConfig object with the specified data types and model type. For ViT models,
         it also specifies the number of patches and patch size.
     """
-    data_types.ablations = ablation_columns  # pyright: ignore
     config = CompleteConfig(
         data_types,
         category_type,
         model_type,
         vit={"image_size": patches, "patch_size": patch_size},
-        a={"columns": ablation_columns},
     )
     config.device = device
     return config

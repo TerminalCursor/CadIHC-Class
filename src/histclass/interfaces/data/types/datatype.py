@@ -1,5 +1,5 @@
 from enum import Flag, auto
-from typing import Self, List
+from typing import Self
 
 
 class DataTypes(Flag):
@@ -20,17 +20,7 @@ class DataTypes(Flag):
     Energetics = auto()
     Nuclei = auto()
 
-    def __init__(self: Self, value: int, ablations: List[int] = []):
-        self._value_ = value
-        self.ablations = ablations
-
-    def get_ablations(self: Self) -> List[int]:
-        ablations = []
-        if hasattr(self, "ablations"):
-            ablations = self.ablations
-        return ablations
-
-    def is_valid(self: Self) -> bool:
+    def is_valid(self) -> bool:
         """
         Check if the input combination is valid.
 
@@ -38,9 +28,9 @@ class DataTypes(Flag):
         Otherwise, returns False.
         """
         if self == self.ImageCNN:
-            return len(self.get_ablations()) == 0
+            return True
         elif self == self.ImageViT:
-            return len(self.get_ablations()) == 0
+            return True
         elif self == self.Morphology:
             return True
         elif self == self.Latent:
@@ -52,8 +42,6 @@ class DataTypes(Flag):
         elif self == (self.Morphology | self.Energetics):
             return True
         elif self == (self.Morphology | self.Nuclei):
-            return True
-        elif self == (self.Morphology | self.Energetics | self.Nuclei):
             return True
         return False
 
@@ -79,12 +67,6 @@ class DataTypes(Flag):
             return_string += "energetics"
         if self & DataTypes.Nuclei:
             return_string += "nuclei"
-        ablations = self.get_ablations()
-        if len(ablations) > 0:
-            ablation_strings = [f"{v}" for v in ablations]
-            ablation_string = "_".join(ablation_strings)
-            ablation_string = "_" + ablation_string
-            return_string += ablation_string
         return return_string
 
     def dimensionality(self: Self) -> int:
@@ -105,7 +87,4 @@ class DataTypes(Flag):
             _dim += 4
         if self & DataTypes.Nuclei:
             _dim += 9
-        number_ablations = 0
-        if hasattr(self, "ablations"):
-            number_ablations = len(self.ablations)  # pyright: ignore
-        return _dim - number_ablations
+        return _dim

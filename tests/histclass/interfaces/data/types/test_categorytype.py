@@ -16,8 +16,6 @@ def test_category_type_values():
             "IIIC",
         ],
         CategoryType.Grade: ["One", "Two", "Three"],
-        CategoryType.BinaryStage: ["Early", "Late"],
-        CategoryType.BinaryGrade: ["Early", "Late"],
     }
     for category, expected in expected_values.items():
         cvs = category.values()
@@ -32,8 +30,6 @@ def test_category_type_to_str():
         CategoryType.BasicStage: "stage_basic",
         CategoryType.AdvancedStage: "stage_advanced",
         CategoryType.Grade: "grade",
-        CategoryType.BinaryStage: "hilostage",
-        CategoryType.BinaryGrade: "hilograde",
     }
     for category, expected_value in expected.items():
         assert (
@@ -65,8 +61,6 @@ def test_category_type_order():
         CategoryType.BasicStage,
         CategoryType.AdvancedStage,
         CategoryType.Grade,
-        CategoryType.BinaryStage,
-        CategoryType.BinaryGrade,
     ]
     assert list(CategoryType) == [
         member for member in expected_members

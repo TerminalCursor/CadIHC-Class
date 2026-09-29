@@ -1,5 +1,4 @@
-from copy import deepcopy as copy
-from typing import Self, Dict, List, Any
+from typing import Self, Dict, Any
 from .data.types import DataTypes, CategoryType
 from .models.types import ModelType
 
@@ -33,20 +32,20 @@ class PointcloudConfig:
         Args:
             kwargs (Any): Keyword arguments to load.
         """
-        # Default attrs
-        default_attrs_k = vars(self.__class__)["__annotations__"].keys()
-        default_attrs = {
-            k: vars(self.__class__)[k]
-            for k in default_attrs_k
-            if k in vars(self.__class__).keys()
-        }
-        manual_attrs = kwargs
-        for key, def_val in default_attrs.items():
-            if key in manual_attrs.keys():
-                val = kwargs[key]
-                setattr(self, key, val)
-            else:
-                setattr(self, key, def_val)
+        if "max_points" in kwargs.keys():
+            self.max_points = kwargs["max_points"]
+        if "min_points" in kwargs.keys():
+            self.min_points = kwargs["min_points"]
+        if "dropout" in kwargs.keys():
+            self.dropout = kwargs["dropout"]
+        if "dropout_output" in kwargs.keys():
+            self.dropout_output = kwargs["dropout_output"]
+        if "n_ff_nodes" in kwargs.keys():
+            self.n_ff_nodes = kwargs["n_ff_nodes"]
+        if "n_ff_layers" in kwargs.keys():
+            self.n_ff_layers = kwargs["n_ff_layers"]
+        if "n_blocks" in kwargs.keys():
+            self.n_blocks = kwargs["n_blocks"]
 
     def to_dict(self: Self) -> Dict[str, int | float | str]:
         """
@@ -55,7 +54,14 @@ class PointcloudConfig:
         Returns:
             Dict[str, int | float | str]: Pointcloud configuration as a dictionary.
         """
-        return copy(vars(self))
+        return {
+            "max_points": self.max_points,
+            "min_points": self.min_points,
+            "dropout": self.dropout,
+            "dropout_output": self.dropout_output,
+            "n_ff_nodes": self.n_ff_nodes,
+            "n_ff_layers": self.n_ff_layers,
+        }
 
 
 class CnnConfig:
@@ -77,20 +83,10 @@ class CnnConfig:
         Args:
             kwargs (Any): Keyword arguments to load.
         """
-        # Default attrs
-        default_attrs_k = vars(self.__class__)["__annotations__"].keys()
-        default_attrs = {
-            k: vars(self.__class__)[k]
-            for k in default_attrs_k
-            if k in vars(self.__class__).keys()
-        }
-        manual_attrs = kwargs
-        for key, def_val in default_attrs.items():
-            if key in manual_attrs.keys():
-                val = kwargs[key]
-                setattr(self, key, val)
-            else:
-                setattr(self, key, def_val)
+        if "window_width" in kwargs.keys():
+            self.window_width = kwargs["window_width"]
+        if "window_height" in kwargs.keys():
+            self.window_height = kwargs["window_height"]
 
     def to_dict(self: Self) -> Dict[str, int | float | str]:
         """
@@ -99,7 +95,10 @@ class CnnConfig:
         Returns:
             Dict[str, int | float | str]: CNN configuration as a dictionary.
         """
-        return copy(vars(self))
+        return {
+            "window_width": self.window_width,
+            "window_height": self.window_height,
+        }
 
 
 class ViTConfig:
@@ -133,20 +132,22 @@ class ViTConfig:
         Args:
             kwargs (Any): Keyword arguments to load.
         """
-        # Default attrs
-        default_attrs_k = vars(self.__class__)["__annotations__"].keys()
-        default_attrs = {
-            k: vars(self.__class__)[k]
-            for k in default_attrs_k
-            if k in vars(self.__class__).keys()
-        }
-        manual_attrs = kwargs
-        for key, def_val in default_attrs.items():
-            if key in manual_attrs.keys():
-                val = kwargs[key]
-                setattr(self, key, val)
-            else:
-                setattr(self, key, def_val)
+        if "image_size" in kwargs.keys():
+            self.image_size = kwargs["image_size"]
+        if "patch_size" in kwargs.keys():
+            self.patch_size = kwargs["patch_size"]
+        if "num_layers" in kwargs.keys():
+            self.num_layers = kwargs["num_layers"]
+        if "num_heads" in kwargs.keys():
+            self.num_heads = kwargs["num_heads"]
+        if "hidden_dim" in kwargs.keys():
+            self.hidden_dim = kwargs["hidden_dim"]
+        if "mlp_dim" in kwargs.keys():
+            self.mlp_dim = kwargs["mlp_dim"]
+        if "dropout" in kwargs.keys():
+            self.dropout = kwargs["dropout"]
+        if "attention_dropout" in kwargs.keys():
+            self.attention_dropout = kwargs["attention_dropout"]
 
     def to_dict(self: Self) -> Dict[str, int | float | str]:
         """
@@ -155,7 +156,16 @@ class ViTConfig:
         Returns:
             Dict[str, int | float | str]: Vision Transformer configuration as a dictionary.
         """
-        return copy(vars(self))
+        return {
+            "image_size": self.image_size,
+            "patch_size": self.patch_size,
+            "num_layers": self.num_layers,
+            "num_heads": self.num_heads,
+            "hidden_dim": self.hidden_dim,
+            "mlp_dim": self.mlp_dim,
+            "dropout": self.dropout,
+            "attention_dropout": self.attention_dropout,
+        }
 
 
 class EarlyExitConfig:
@@ -175,28 +185,6 @@ class EarlyExitConfig:
     }
     max_failures: int = 200
 
-    def __init__(self: Self, **kwargs: Any):
-        """
-        Initialize Early Exit configuration.
-
-        Args:
-            kwargs (Any): Keyword arguments to load.
-        """
-        # Default attrs
-        default_attrs_k = vars(self.__class__)["__annotations__"].keys()
-        default_attrs = {
-            k: vars(self.__class__)[k]
-            for k in default_attrs_k
-            if k in vars(self.__class__).keys()
-        }
-        manual_attrs = kwargs
-        for key, def_val in default_attrs.items():
-            if key in manual_attrs.keys():
-                val = kwargs[key]
-                setattr(self, key, val)
-            else:
-                setattr(self, key, def_val)
-
     def to_dict(
         self: Self,
     ) -> Dict[str, int | float | Dict[str, int | float]]:
@@ -206,51 +194,10 @@ class EarlyExitConfig:
         Returns:
             Dict[str, int | float | Dict[str, int | float]]: Early exit configuration as a dictionary.
         """
-        return copy(vars(self))
-
-
-class AblationConfig:
-    """
-    Configuration for ablation study.
-
-    Attributes:
-        columns (List[int]): Columns to remove
-    """
-
-    columns: List[int] = []
-
-    def __init__(self: Self, **kwargs: Any):
-        """
-        Initialize Ablation configuration.
-
-        Args:
-            kwargs (Any): Keyword arguments to load.
-        """
-        # Default attrs
-        default_attrs_k = vars(self.__class__)["__annotations__"].keys()
-        default_attrs = {
-            k: vars(self.__class__)[k]
-            for k in default_attrs_k
-            if k in vars(self.__class__).keys()
+        return {
+            "kwargs": self.kwargs,
+            "max_failures": self.max_failures,
         }
-        manual_attrs = kwargs
-        for key, def_val in default_attrs.items():
-            if key in manual_attrs.keys():
-                val = kwargs[key]
-                setattr(self, key, val)
-            else:
-                setattr(self, key, def_val)
-
-    def to_dict(
-        self: Self,
-    ) -> Dict[str, int | float | Dict[str, int | float]]:
-        """
-        Serialize ablation configuration to dictionary.
-
-        Returns:
-            Dict[str, int | float | Dict[str, int | float]]: Early exit configuration as a dictionary.
-        """
-        return copy(vars(self))
 
 
 class CompleteConfig:
@@ -270,7 +217,6 @@ class CompleteConfig:
         loss_fn (str): Loss function name.
         optimizer (str): Optimizer name.
         early_exit_config (EarlyExitConfig): Early exit configuration.
-        ablation_config (AblationConfig): Ablation configuration.
         pointcloud_config (PointcloudConfig | None): Pointcloud configuration.
         image_values (CnnConfig | None): CNN values.
         vision_transformer_config (ViTConfig | None): Vision transformer configuration.
@@ -288,7 +234,6 @@ class CompleteConfig:
     loss_fn: str = "mse_loss"
     optimizer: str = "Adam"
     early_exit_config: EarlyExitConfig = EarlyExitConfig()
-    ablation_config: AblationConfig = AblationConfig()
     pointcloud_config: PointcloudConfig | None = None
     image_values: CnnConfig | None = None
     vision_transformer_config: ViTConfig | None = None
@@ -313,15 +258,6 @@ class CompleteConfig:
             optimizer (str, optional): Optimizer name. Defaults to "Adam".
             kwargs (Any, optional): Keyword arguments to load.
         """
-        # Default attrs
-        default_attrs_k = vars(self.__class__)["__annotations__"].keys()
-        default_attrs = {
-            k: vars(self.__class__)[k]
-            for k in default_attrs_k
-            if k in vars(self.__class__).keys()
-        }
-        for key, def_val in default_attrs.items():
-            setattr(self, key, def_val)
         self.model_type = model_type
         self.input_data_types = input_data_types
         self.output_data_type = category_type
@@ -356,8 +292,6 @@ class CompleteConfig:
             if "pc" in kwargs.keys():
                 _kwargs = kwargs["pc"]
             self.pointcloud_config = PointcloudConfig(**_kwargs)
-        if "a" in kwargs.keys():
-            self.ablation_config = AblationConfig(**kwargs["a"])
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         return
@@ -369,13 +303,10 @@ class CompleteConfig:
         Returns:
             Dict[str, Any]: Complete configuration as a dictionary.
         """
-        input_data_types_v = [x.to_str() for x in self.input_data_types]
-        if len(self.input_data_types.get_ablations()) > 0:
-            input_data_types_v.append(f"{self.input_data_types.get_ablations()}")
         return_dict: Dict[str, Any] = {
             "model_name": self.model_name,
             "model_type": self.model_type.to_str(),
-            "input_data_types": input_data_types_v,
+            "input_data_types": [x.to_str() for x in self.input_data_types],
             "output_data_type": self.output_data_type.to_str(),
             "epochs": self.epochs,
             "learning_rate": self.learning_rate,
@@ -384,7 +315,6 @@ class CompleteConfig:
             "train_val_split": self.train_val_split,
             "device": self.device,
             "early_exit_config": self.early_exit_config.to_dict(),
-            "ablation_config": self.ablation_config.to_dict(),
         }
         if self.pointcloud_config is not None:
             v = self.pointcloud_config.to_dict()

@@ -7,8 +7,6 @@ def test_CategoryTypeValues():
         CategoryType.BasicStage: 3,
         CategoryType.AdvancedStage: 6,
         CategoryType.Grade: 3,
-        CategoryType.BinaryStage: 2,
-        CategoryType.BinaryGrade: 2,
     }
     for _type in CategoryType:
         if _type == CategoryType.Unknown:

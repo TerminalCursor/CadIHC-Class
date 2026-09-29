@@ -8,6 +8,7 @@ from typing import Self, Tuple, List, Any
 from torch.nn import Module
 from torch import Tensor
 from torch.nn.functional import elu
+from torch.utils.data import DataLoader
 from torch import float32
 from torch import dtype as _DTYPE
 from numpy.typing import NDArray
@@ -162,14 +163,14 @@ class PyTorchModel(Model):
 
     def eval_epoch(
         self: Self,
-        dataloader: DataloaderT,
+        dataloader: DataLoader[Tuple[Tensor, Tensor]],
         loss_fn: LossT,
     ) -> Tuple[float, float, NDArray[Any]]:
         """
         Evaluate the model on a batch.
 
         Args:
-            dataloader (DataloaderT): The data loader to use.
+            dataloader (DataLoader[Tuple[Tensor, Tensor]]): The data loader to use.
             loss_fn (LossT): The loss function to use.
 
         Returns:
@@ -246,29 +247,3 @@ class PyTorchModel(Model):
 
         save(self.model.state_dict(), checkpoint_path)
         return self
-
-    def embed(self: Self, x: Any, **kwargs: Any) -> Any:
-        """
-        Embed data from a model
-
-        Args:
-            x: Input
-            kwargs: Embedding Arguments
-
-        Returns:
-            Data
-        """
-        return None
-
-    def visualize(self: Self, x: Any, **kwargs: Any) -> Any:
-        """
-        Visualize a model
-
-        Args:
-            x: Input
-            kwargs: Visualization Arguments
-
-        Returns:
-            Data
-        """
-        return None

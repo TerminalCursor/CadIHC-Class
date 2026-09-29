@@ -22,8 +22,6 @@ class CategoryType(Enum):
     BasicStage = 2
     AdvancedStage = 3
     Grade = 4
-    BinaryStage = 5
-    BinaryGrade = 6
 
     def to_str(self: Self) -> str:
         """
@@ -46,10 +44,6 @@ class CategoryType(Enum):
             return "stage_advanced"
         elif self == CategoryType.Grade:
             return "grade"
-        elif self == CategoryType.BinaryStage:
-            return "hilostage"
-        elif self == CategoryType.BinaryGrade:
-            return "hilograde"
         assert False, "Undefined Type!"  # pyright: ignore[reportUnreachable]
 
     def values(self: Self) -> List[str] | None:
@@ -74,8 +68,4 @@ class CategoryType(Enum):
             return ["IA", "IIA", "IIB", "IIIC", "IIIB", "IIIC"]
         elif self == CategoryType.Grade:
             return ["One", "Two", "Three"]
-        elif self == CategoryType.BinaryStage:
-            return ["Early", "Late"]
-        elif self == CategoryType.BinaryGrade:
-            return ["Early", "Late"]
         assert False, "Undefined Type!"  # pyright: ignore[reportUnreachable]

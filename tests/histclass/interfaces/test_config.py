@@ -36,7 +36,7 @@ class TestConfig:
             optimizer="Adam",
         )
         config_dict = config.to_dict()
-        assert len(config_dict) == 13
+        assert len(config_dict) == 12
         assert "model_name" in config_dict
         assert "early_exit_config" in config_dict
 
@@ -48,7 +48,7 @@ class TestConfig:
     def test_pointcloud_config_to_dict(self):
         config = PointcloudConfig(max_points=100, dropout=0.1)
         config_dict = config.to_dict()
-        assert len(config_dict) == 7
+        assert len(config_dict) == 6
         assert "max_points" in config_dict
         assert "dropout" in config_dict
 
