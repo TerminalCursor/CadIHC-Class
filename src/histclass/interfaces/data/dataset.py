@@ -1,4 +1,3 @@
-from ...tools.call_graph import cg
 from ..config import CompleteConfig
 from ..data.types import DataTypes, CategoryType, DataframeType
 from typing import Self, List, Any
@@ -39,7 +38,6 @@ class Dataframe:
         usage: DataframeType = DataframeType.Unknown,
     ):
         """# Get Data from Sources"""
-        cg.add("Dataset.__init__")
         self.data_types = input_dtypes
         self.category_type = output_dtype
         self.source = source
@@ -67,7 +65,6 @@ class Dataset:
 
     def __init__(self: Self, sources: List[str], configuration: CompleteConfig):
         """# Get Data from Sources"""
-        cg.add("Dataset.__init__")
         self.data_types = configuration.input_data_types
         self.category_type = configuration.output_data_type
         self.data_frames = []

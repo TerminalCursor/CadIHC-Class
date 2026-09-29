@@ -1,15 +1,13 @@
-from ....tools.call_graph import cg
 from ....interfaces.data.dataset import Dataset as DatasetInterface
 from ....interfaces.data.types import DataTypes, CategoryType, DataframeType
 from ....interfaces.monad.maybe import Maybe
 from ....interfaces.config import CompleteConfig
+from ..models.interface import PyTorchModel
+from ..types import DataT, DatasetT, CDatasetT, DataloaderT
 from .utils import get_metadata_labels, get_data
 from .dataframe import TorchDataframe
-from ..types import DataT, DatasetT, CDatasetT, DataloaderT
 from typing import Self, List, Any
 from torch.utils.data import DataLoader
-
-
 from torch import Tensor
 
 
@@ -28,7 +26,6 @@ class PointcloudDataframe(DatasetT, TorchDataframe):
 
     def to(self: Self, *args: Any) -> Self:
         """# Move dataset to device and dtype"""
-        cg.add("PointcloudDataframe.to")
         self.data = self.data.to(*args)
         self.labels = self.labels.to(*args)
         return self
@@ -39,7 +36,6 @@ class PointcloudDataframe(DatasetT, TorchDataframe):
         Get Data and Label from Index
         Generates a sentence on the fly
         """
-        cg.add("PointcloudDataframe.__getitem__")
         from torch import zeros, randint, rand, randperm
 
         output_data = zeros(
@@ -54,11 +50,10 @@ class PointcloudDataframe(DatasetT, TorchDataframe):
             n = r_len
         n = min(self.seq_len, self.data.shape[0], n)
         output_data[:n, ...] = self.data[randperm(self.data.size()[0]), ...][:n, ...]
-        return output_data, self.labels
+        return output_data, self.labels, self.name
 
     def __len__(self: Self) -> int:
         """# Length = 1"""
-        cg.add("PointcloudDataframe.__len__")
         return 1
 
 
@@ -86,7 +81,6 @@ class ImageDataframe(DatasetT, TorchDataframe):
 
         Also automatically records image dimensions
         """
-        cg.add("ImageDataframe.__init__")
         super(TorchDataframe, self).__init__(
             source, input_dtypes, output_dtype, name, data, labels, usage
         )
@@ -95,7 +89,6 @@ class ImageDataframe(DatasetT, TorchDataframe):
 
     def to(self: Self, *args: Any) -> Self:
         """# Move dataset to device and dtype"""
-        cg.add("ImageDataframe.to")
         self.data = self.data.to(*args)
         self.labels = self.labels.to(*args)
         return self
@@ -106,7 +99,6 @@ class ImageDataframe(DatasetT, TorchDataframe):
         Get Data and Label from Index
         Generates a sentence on the fly
         """
-        cg.add("ImageDataframe.__getitem__")
         from torch.nn.functional import pad
 
         self.data = pad(
@@ -120,11 +112,10 @@ class ImageDataframe(DatasetT, TorchDataframe):
                 0,
             ),
         )
-        return self.data, self.labels
+        return self.data, self.labels, self.name
 
     def __len__(self: Self) -> int:
         """# Length = 1"""
-        cg.add("ImageDataframe.__len__")
         return 1
 
 
@@ -139,9 +130,13 @@ class TorchDataset(DatasetInterface):
     Any incomplete source is excluded
     """
 
-    def __init__(self: Self, sources: List[str], configuration: CompleteConfig):
+    def __init__(
+        self: Self,
+        sources: List[str],
+        configuration: CompleteConfig,
+        classic_norm: bool = False,
+    ):
         """# Get Data from Sources"""
-        cg.add("TorchDataset.__init__")
         super().__init__(sources, configuration)
         DataframeInit = (
             ImageDataframe
@@ -152,17 +147,27 @@ class TorchDataset(DatasetInterface):
             metadata, labels = get_metadata_labels(source, self.category_type)
             if metadata is None:
                 continue
-            data = get_data(source, self.data_types, metadata)
+            data = get_data(
+                source, self.data_types, metadata, classic_norm=classic_norm
+            )
             if data is None:
                 continue
             if labels is None:
                 continue
             usage = metadata.assignment
+            parts = source.split("/")
+            name = ""
+            if parts[-1] == "":
+                if len(parts) > 1:
+                    name = parts[-2]
+            else:
+                if len(parts) > 0:
+                    name = parts[-1]
             data_frame = DataframeInit(
                 source,
                 self.data_types,
                 self.category_type,
-                name="",
+                name=name,
                 data=data,
                 labels=labels,
                 usage=usage,
@@ -181,7 +186,6 @@ class TorchDataset(DatasetInterface):
 
     def get_dataloaders(self: Self) -> List[DataloaderT | List[DataloaderT]]:
         """# Get Dataloaders"""
-        cg.add("TorchDataset.get_dataloaders")
         from torch import stack, bincount, double
         from torch.utils.data import WeightedRandomSampler, ConcatDataset
 
@@ -191,7 +195,6 @@ class TorchDataset(DatasetInterface):
             usage: DataframeType | None = None, label: int | None = None
         ) -> Maybe[DataloaderT]:
             """# Get Dataloader for Usage"""
-            cg.add("TorchDataset.get_dataloaders.get_dataloader")
             dataset = self.data_frames
             if usage is not None:
                 dataset = [
@@ -245,3 +248,43 @@ class TorchDataset(DatasetInterface):
                 sub_dataloaders.append(dl.data)
         dataloaders.append(sub_dataloaders)
         return dataloaders
+
+
+def load_data(
+    configuration: CompleteConfig, local_base: str = "./", classic_norm: bool = False
+):
+    """# Get Data from Sources
+
+    Assumed schema:
+    ihc/data/classification/
+          dataset.id/
+            metadata.json        -- Sample metadata
+            image.png            -- Stained Sample Source Image
+            Metrics.csv          -- Morphology Data
+            MetricsAndLatent.csv -- Morphology Data
+            CNJoinedMetrics.csv  -- Morphology and Nuclei Data
+            Energetics.npy       -- Energetics Data
+    """
+    from ....extensions.glob_ext import globs
+
+    base_directory = f"{local_base}/ihc/data/classification/"
+    data_sources = globs(base_directory + "/*/")
+    return TorchDataset(data_sources, configuration, classic_norm=classic_norm)
+
+
+def load_data_from_model(model: PyTorchModel, local_base: str = "./") -> TorchDataset:
+    """# Load Data
+    That is associated with a given model
+    """
+    from ..models.vit import ViTModel
+    from ....tools.configuration import load_config
+
+    classic_norm = model.classic_data_norm
+    data_type = model.data_types
+    category_type = model.category_type
+    model_type = model.model_type
+    patches = 1
+    if isinstance(model, ViTModel):
+        patches = model.image_size
+    config = load_config(data_type, category_type, model_type, patches=patches)
+    return load_data(config, local_base=local_base, classic_norm=classic_norm)

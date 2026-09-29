@@ -1,4 +1,3 @@
-from .call_graph import cg
 from ..interfaces.db import Database
 from typing import List, Dict, Self, Any
 from sqlite3 import Cursor
@@ -8,7 +7,6 @@ def sqlite3_execute(
     cursor: Cursor, query: str, echo: bool = False, dry_run: bool = False
 ):
     """# Execute Sqlite3 Query"""
-    cg.add("sqlite3_execute")
     if echo:
         print(query)
     if not dry_run:
@@ -34,12 +32,10 @@ class ResultsDatabase(Database):
 
     def __init__(self: Self, filename: str):
         """# Set Filename to Manage"""
-        cg.add("ResultsDatabase.__init__")
         super().__init__(filename)
 
     def add(self: Self, **results_dict: Any) -> Self:
         """# Add Data"""
-        cg.add("ResultsDatabase.add")
         for key in results_dict.keys():
             keyl = key.lower()
             if keyl in self.meta_keys:
@@ -57,7 +53,6 @@ class ResultsDatabase(Database):
 
         From `self.data`
         """
-        cg.add("ResultsDatabase.write")
         import sqlite3
 
         con = sqlite3.connect(self.filename)

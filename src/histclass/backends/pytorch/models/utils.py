@@ -1,52 +1,54 @@
-from ....tools.call_graph import cg
 from ....interfaces.config import CompleteConfig
 from ....interfaces.data.types import DataTypes, CategoryType
 from ....interfaces.models.types import ModelType
-from ....interfaces.models.model import Model
 from ..types import ActivationT
 from .cnn import CnnModel
 from .pointcloud import PointcloudModel
 from .vit import ViTModel
 from .gru import GruModel
+from .interface import PyTorchModel
 from torch.nn.functional import elu
 from typing import Dict
 
 
-def get_model(configuration: CompleteConfig, activation: ActivationT = elu) -> Model:
+def get_model(
+    configuration: CompleteConfig, activation: ActivationT = elu
+) -> PyTorchModel:
     """# Get a model"""
-    cg.add("get_model")
     assert configuration.input_data_types.is_valid()
+    device = configuration.device
     if configuration.input_data_types == DataTypes.ImageCNN:
-        return CnnModel(configuration, activation)
+        return CnnModel(configuration, activation).to(device)
     elif configuration.input_data_types == DataTypes.ImageViT:
-        return ViTModel(configuration, activation)
+        return ViTModel(configuration, activation).to(device)
     else:
         if configuration.model_type == ModelType.Attention:
-            return PointcloudModel(configuration, activation)
-        return GruModel(configuration, activation)
+            return PointcloudModel(configuration, activation).to(device)
+        return GruModel(configuration, activation).to(device)
 
 
 def load_model(
     configuration: CompleteConfig,
     checkpoint_path: str,
     activation: ActivationT = elu,
-) -> Model:
+) -> PyTorchModel:
     """# Load a Model"""
-    cg.add("load_model")
+    device = configuration.device
     model = get_model(configuration, activation)
-    return model.load(checkpoint_path)
+    return model.load(checkpoint_path).to(device)
 
 
 def download_model(
     name: str,
     model_id: str | None = None,
     local_base: str = "./",
+    remote_base: str = "./",
     use_cached: bool = True,
-) -> Model:
+) -> PyTorchModel:
     """# Download a model from repository
 
     Assumed schema:
-    ihc/classification/
+    ihc/models/classification/
           name.id/
             metadata.json
               data_type: DataTypes as a value,
@@ -75,8 +77,8 @@ def download_model(
     model_full_name = f"{name}"
     if model_id is not None:
         model_full_name += f".{model_id}"
-    remote_path = f"ihc/classification/{model_full_name}/"
-    local_path = f"{local_base}ihc/classification/{model_full_name}/"
+    remote_path = f"{remote_base}ihc/models/classification/{model_full_name}/"
+    local_path = f"{local_base}ihc/models/classification/{model_full_name}/"
     makedirs(local_path, exist_ok=True)
     is_cached = False
     if exists(f"{local_path}metadata.json") and exists(f"{local_path}checkpoint.pth"):
@@ -105,6 +107,9 @@ def download_model(
     model_type = ModelType.Attention
     data_type = DataTypes.Unknown
     category_type = CategoryType.Unknown
+    classic_norm = False
+    model_kwargs = {}
+    confidences = None
     with open(local_path + "metadata.json", "r") as fhandle:
         from json import load
 
@@ -112,31 +117,46 @@ def download_model(
         assert "model_type" in data.keys(), "ModelType not found in metadata"
         assert "data_type" in data.keys(), "DataType not found in metadata"
         assert "category_type" in data.keys(), "CategoryType not found in metadata"
+        if "use_classic" in data.keys():
+            if data["use_classic"] == "yes":
+                classic_norm = True
+        if "patches" in data.keys():
+            model_kwargs["vit"] = {"image_size": data["patches"]}
+        if "confidences" in data.keys():
+            confidences = data["confidences"]
         model_type = ModelType(data["model_type"])
         data_type = DataTypes(data["data_type"])
         category_type = CategoryType(data["category_type"])
         assert data_type.is_valid()
         assert category_type != CategoryType.Unknown
-    config = CompleteConfig(data_type, category_type, model_type)
+    config = CompleteConfig(
+        data_type, category_type, model_type, **model_kwargs  # pyright: ignore
+    )
 
-    return load_model(config, local_path + "checkpoint.pth")
+    model = load_model(config, local_path + "checkpoint.pth")
+    model.classic_data_norm = classic_norm
+    model.confidences = confidences
+    assert isinstance(model, PyTorchModel)
+    return model
 
 
 def upload_model(
-    model: Model,
+    model: PyTorchModel,
     name: str,
     optimizer: str | None = None,
     loss_fn: str | None = None,
     lr: float | None = None,
     batch_size: int | None = None,
     epochs: int | None = None,
+    rest: Dict[str, str | int | float] | None = None,
     local_base: str = "./",
+    remote_base: str = "./",
     to_remote: bool = True,
 ):
     """# Upload Model to Model Repository
 
     Assumed schema:
-    ihc/classification/
+    ihc/models/classification/
           name.id/
             metadata.json
               model_type: ModelType as a value,
@@ -162,7 +182,7 @@ def upload_model(
     from ....tools.env import get_env
     from ....interfaces.remote_file import RemoteFile
     from json import dumps
-    from os import remove
+    from os import remove, makedirs
 
     def _hash(fpath: str) -> str:
         """# Compute hash of file"""
@@ -194,13 +214,18 @@ def upload_model(
         metadata["batch_size"] = batch_size
     if epochs is not None:
         metadata["epochs"] = epochs
+    if rest is not None:
+        for key, value in rest.items():
+            metadata[key] = value
     model.save(".tmp.pth")
     model_hash = _hash(".tmp.pth")
     remove(".tmp.pth")
-    local_path = f"{local_base}ihc/classification/{name}.{model_hash}/"
-    remote_path = f"ihc/classification/{name}.{model_hash}/"
+    local_path = f"{local_base}ihc/models/classification/{name}.{model_hash}/"
+    remote_path = f"{remote_base}ihc/models/classification/{name}.{model_hash}/"
+    makedirs(local_path, exist_ok=True)
     with open(local_path + "metadata.json", "w+") as fhandle:
         fhandle.write(dumps(metadata, indent=2))
+    model.save(local_path + "checkpoint.pth")
 
     if to_remote:
         hostname = get_env("REMOTE_HOSTNAME").unwrap()

@@ -1,5 +1,4 @@
 # Sqlite3 Loading Extensions
-from ..tools.call_graph import cg
 from .pandas_ext import *
 from ..interfaces.data.types import DataTypes
 from typing import List, Tuple
@@ -18,7 +17,6 @@ def legacy_enumerate_model(
     Returns ([enumeration of data type],
              [patch count if applicable else -1])
     """
-    cg.add("legacy_enumerate_model")
     values: List[int] = []
     evalues: List[int] = []
     for value in wash2strlist(series):
@@ -57,7 +55,6 @@ def legacy_sql_load(
 
     Additionally, generate some columns such as model enumeration
     """
-    cg.add("legacy_sql_load")
     from pandas import (  # pyright: ignore[reportMissingTypeStubs]
         read_sql_query,  # pyright: ignore
     )

@@ -1,5 +1,4 @@
 # Pandas Extensions
-from ..tools.call_graph import cg
 from pandas import DataFrame, Series  # pyright: ignore[reportMissingTypeStubs]
 from numpy.typing import NDArray
 from typing import Any, Dict
@@ -33,7 +32,6 @@ def wash2series(x: Any) -> Series:
 
 def filter_on(self: DataFrame, column: str, value: Any) -> Series | DataFrame:
     """# Filter a Dataframe on Column Value"""
-    cg.add("pde.filter_on")
     df = self.copy()
     _filter: Series = wash2series(df[column] == value)
     filtered = wash2df(df[_filter]).reset_index(drop=True)
@@ -45,7 +43,6 @@ def get_unique(self: DataFrame | Series, col: str | None = None) -> NDArray[Any]
 
     For dataframes, a desired column can be provided
     """
-    cg.add("pde.get_unique")
     from numpy import unique
 
     if isinstance(self, DataFrame):
@@ -56,7 +53,6 @@ def get_unique(self: DataFrame | Series, col: str | None = None) -> NDArray[Any]
 
 def get_enumerate(self: Series) -> Dict[int, Any]:
     """# Enumerate Unique Values in Series"""
-    cg.add("pde.get_enumerate")
     values = self.unique()
     return {v: i for i, v in enumerate(values)}
 
@@ -72,7 +68,6 @@ def convert_timestamp(
 
     Return the new dataframe with new `col_out` column with time as an `int`
     """
-    cg.add("pde.convert_timestamp")
     from datetime import datetime
     from numpy import array
 

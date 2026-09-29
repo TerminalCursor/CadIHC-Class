@@ -1,4 +1,3 @@
-from ....tools.call_graph import cg
 from enum import Flag, auto
 from typing import Self
 
@@ -23,7 +22,6 @@ class DataTypes(Flag):
 
     def is_valid(self) -> bool:
         """# Determine if it is a valid combination"""
-        cg.add("DataTypes.is_valid")
         if self == self.ImageCNN:
             return True
         elif self == self.ImageViT:
@@ -44,7 +42,6 @@ class DataTypes(Flag):
 
     def to_str(self: Self) -> str:
         """# String Representation"""
-        cg.add("DataTypes.to_str")
         return_string = ""
         if not self.is_valid():
             return return_string
@@ -64,7 +61,6 @@ class DataTypes(Flag):
 
     def dimensionality(self: Self) -> int:
         """# Get Dimensionality of Dataset"""
-        cg.add("DataTypes.dimensionality")
         if not self.is_valid():
             return 0
         _dim = 0

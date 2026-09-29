@@ -1,4 +1,3 @@
-from ...tools.call_graph import cg
 from ...interfaces.config import CompleteConfig
 from ...interfaces.monad.maybe import Maybe
 from ...interfaces.models.types import LossT
@@ -178,7 +177,6 @@ def get_loss(config: CompleteConfig) -> Maybe[LossT]:
 
     Backend-specific function
     """
-    cg.add("get_loss")
     name = config.loss_fn
     if name == "mse_loss":
         return Maybe(mse_loss)

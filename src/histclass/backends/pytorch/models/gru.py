@@ -1,4 +1,3 @@
-from ....tools.call_graph import cg
 from ....interfaces.config import CompleteConfig
 from ....interfaces.data.types import DataTypes, CategoryType
 from ....interfaces.models.types import ModelType
@@ -21,7 +20,6 @@ class PyTorchGru(Module):
         num_classes: int,
         dropout: float = 0.0,
     ):
-        cg.add("PyTorchGRU.__init__")
         super().__init__()
 
         self.hidden_size = hidden_size
@@ -41,7 +39,6 @@ class PyTorchGru(Module):
         """
         x shape: (batch_size, seq_len, input_size)
         """
-        cg.add("PyTorchGRU.forward")
         from torch import zeros
 
         # Initialize hidden state
@@ -76,7 +73,6 @@ class GruModel(PyTorchModel):
         activation: ActivationT = elu,
     ):
         """# Model Initialization"""
-        cg.add("GRUModel.__init__")
         assert configuration.pointcloud_config is not None
         hidden_size = configuration.pointcloud_config.n_ff_nodes
         num_layers = configuration.pointcloud_config.n_ff_layers

@@ -1,4 +1,3 @@
-from ...tools.call_graph import cg
 from ...interfaces.config import CompleteConfig
 from ...interfaces.monad.maybe import Maybe
 from ...interfaces.models.types import OptimizerT
@@ -10,7 +9,6 @@ def get_optimizer(config: CompleteConfig) -> Maybe[OptimizerT]:
 
     Backend-specific function
     """
-    cg.add("get_optimizer")
     name = config.optimizer
     if name == "Adam":
         return Maybe(Adam)

@@ -1,4 +1,3 @@
-from ..call_graph import cg
 from typing import Any, List, Tuple
 from numpy.typing import NDArray
 
@@ -8,7 +7,6 @@ def to_arr(data: List[Tuple[Any]] | NDArray[Any]) -> NDArray[Any]:
 
     If already a numpy array, ignore
     """
-    cg.add("to_arr")
     from numpy import ndarray, array
 
     if isinstance(data, ndarray):
@@ -25,7 +23,6 @@ def zero_slope(
 
     Confidence level from `p_value`
     """
-    cg.add("zero_slope")
     from scipy.stats import (  # pyright: ignore[reportMissingTypeStubs]
         linregress,  # pyright: ignore[reportUnknownVariableType]
     )
@@ -44,7 +41,6 @@ def transpose(data: List[Tuple[Any]] | NDArray[Any]) -> List[Any] | NDArray[Any]
     [(a_1,b_1,c_1,...),(a_2,b_2,c_2,...),...]
     [(a_1,a_2,...),(b_1,b_2,...),...]
     """
-    cg.add("transpose")
     from numpy import ndarray
 
     if isinstance(data, ndarray):
@@ -59,7 +55,6 @@ def mean_near(
 
     Returns if the data is within `n_std` of the value
     """
-    cg.add("mean_near")
     from numpy import abs
 
     data = to_arr(data)
@@ -86,7 +81,6 @@ def early_exit_detector(
     Assume `losses` is of the form
     [(training_0,validation_0),(training_1,validation_1),...]
     """
-    cg.add("early_exit_detector")
     data = transpose(losses)
     data = to_arr(data)
     data = data[on_index, ...]

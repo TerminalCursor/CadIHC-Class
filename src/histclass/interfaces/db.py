@@ -1,4 +1,3 @@
-from ..tools.call_graph import cg
 from typing import Self, Any
 
 
@@ -15,7 +14,6 @@ class Database:
 
         Associate with filename
         """
-        cg.add("Database.__init__")
         self.filename = filename
 
     def add(self: Self, *_args: Any, **_results: Any) -> Self:

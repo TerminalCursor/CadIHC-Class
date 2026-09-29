@@ -1,4 +1,3 @@
-from ...tools.call_graph import cg
 from typing import Self, Callable, TypeVar, Generic
 
 T = TypeVar("T")
@@ -23,32 +22,27 @@ class Maybe(Generic[T]):
 
     def __init__(self: Self, data: T | None = None):
         """# Set the data"""
-        cg.add("Maybe.__init__")
         self.data = data
 
     def __call__(self: Self, fptr: Callable[[T], V]) -> "Maybe[V]":
         """# Call a function on non-nulled data"""
-        cg.add("Maybe.__call__")
         if self.data is None:
             return Maybe(None)
         return Maybe(fptr(self.data))
 
     def __bool__(self: Self) -> bool:
         """# Is Non-nulled?"""
-        cg.add("Maybe.__bool__")
         return self.data is not None
 
     def catch(self: Self, other_data: T | None) -> "Self | Maybe[T]":
         """# Non-nulled data returns a new maybe with `other_data`
         Otherwise, return the current Maybe
         """
-        cg.add("Maybe.catch")
         if self.data is None:
             return Maybe(other_data)
         return self
 
     def unwrap(self: Self) -> T:
         """# Get the internal non-nulled data"""
-        cg.add("Maybe.unwrap")
         assert self.data is not None, "Empty container unwraped!"
         return self.data

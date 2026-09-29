@@ -1,22 +1,35 @@
+# Ignore everything by default
 /*
 /**/*.*
+!.gitignore
+
+# Allow Workflows
 !.gitea/
 !.gitea/workflows/
 !.gitea/workflows/*.yaml
-!env.sh
+
+# Allow source files
 !pc_util
 !src
 !examples
+!/**/*.py
+
+# Allow tests
 !tests
 !tests/inputs/**/*.*
+# Ignore test outputs
 tests/outputs/**/*
+# Keep directory
 !tests/outputs/.gitignore
-!/**/*.py
-!.gitignore
+
+# Allow environment configurations
 !pixi.lock
 !pixi.toml
 !pyproject.toml
-# pixi environments
+
+# Ignore pixi environments
 .pixi/*
 !.pixi/config.toml
+
+# Keep pyright type checking configuration
 !strict.json

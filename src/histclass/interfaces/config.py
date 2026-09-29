@@ -1,4 +1,3 @@
-from ..tools.call_graph import cg
 from typing import Self, Dict, Any
 from .data.types import DataTypes, CategoryType
 from .models.types import ModelType
@@ -20,7 +19,6 @@ class PointcloudConfig:
 
         Load Any Passed Values
         """
-        cg.add("PointcloudConfig.__init__")
         if "max_points" in kwargs.keys():
             self.max_points = kwargs["max_points"]
         if "min_points" in kwargs.keys():
@@ -38,7 +36,6 @@ class PointcloudConfig:
 
     def to_dict(self: Self) -> Dict[str, int | float | str]:
         """# Serialize to Dictionary"""
-        cg.add("PointcloudConfig.to_dict")
         return {
             "max_points": self.max_points,
             "min_points": self.min_points,
@@ -60,7 +57,6 @@ class CnnConfig:
 
         Load Any Passed Values
         """
-        cg.add("CnnConfig.__init__")
         if "window_width" in kwargs.keys():
             self.window_width = kwargs["window_width"]
         if "window_height" in kwargs.keys():
@@ -68,7 +64,6 @@ class CnnConfig:
 
     def to_dict(self: Self) -> Dict[str, int | float | str]:
         """# Serialize to Dictionary"""
-        cg.add("CnnConfig.to_dict")
         return {
             "window_width": self.window_width,
             "window_height": self.window_height,
@@ -92,7 +87,6 @@ class ViTConfig:
 
         Load Any Passed Values
         """
-        cg.add("ViTConfig.__init__")
         if "image_size" in kwargs.keys():
             self.image_size = kwargs["image_size"]
         if "patch_size" in kwargs.keys():
@@ -112,7 +106,6 @@ class ViTConfig:
 
     def to_dict(self: Self) -> Dict[str, int | float | str]:
         """# Serialize to Dictionary"""
-        cg.add("ViTConfig.to_dict")
         return {
             "image_size": self.image_size,
             "patch_size": self.patch_size,
@@ -140,7 +133,6 @@ class EarlyExitConfig:
         self: Self,
     ) -> Dict[str, int | float | Dict[str, int | float]]:
         """# Serialize to Dictionary"""
-        cg.add("EarlyExitConfig.to_dict")
         return {
             "kwargs": self.kwargs,
             "max_failures": self.max_failures,
@@ -183,7 +175,6 @@ class CompleteConfig:
         optimizer: Optimizer name to use
         Load Any Additional Passed Values
         """
-        cg.add("CompleteConfig.__init__")
         self.model_type = model_type
         self.input_data_types = input_data_types
         self.output_data_type = category_type
@@ -224,7 +215,6 @@ class CompleteConfig:
 
     def to_dict(self: Self) -> Dict[str, Any]:
         """# Serialize to Dictionary"""
-        cg.add("CompleteConfig.to_dict")
         return_dict: Dict[str, Any] = {
             "model_name": self.model_name,
             "model_type": self.model_type.to_str(),

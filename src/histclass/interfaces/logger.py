@@ -1,4 +1,3 @@
-from ..tools.call_graph import cg
 from .db import Database
 from typing import Self, Any, Dict, Tuple
 
@@ -6,7 +5,6 @@ from typing import Self, Any, Dict, Tuple
 class Logger:
     """# Logger Class
 
-    Enable logging into text dump and database
 
     `add` and `addnl` adds text to a logfile
     `db_set_meta` set metadata for database recording
@@ -21,7 +19,6 @@ class Logger:
 
     def __init__(self: Self, base_path: str, echo_stdout: bool = True):
         """# Initialize Logger"""
-        cg.add("Logger.__init__")
         from ..tools.date import get_datestring
         from os.path import exists
         from .file import File
@@ -40,7 +37,6 @@ class Logger:
 
         If provided text is a dict or tuple, format it as a string with indentations
         """
-        cg.add("Logger.add")
         if not self.enabled:
             return self
 
@@ -66,7 +62,6 @@ class Logger:
 
         See `add` for more details
         """
-        cg.add("Logger.addnl")
         self.add(formatted_text)
         self.add("\n")
         return self
@@ -76,12 +71,10 @@ class Logger:
 
         Database backend can set what keys will correspond to datapoints
         """
-        cg.add("Logger.db_add")
         self.db.add(**results_dict)
         return self
 
     def db_write(self: Self) -> Self:
         """# Update DB with Data"""
-        cg.add("Logger.db_write")
         self.db.write(echo=self.echo_stdout)
         return self

@@ -1,4 +1,3 @@
-from .call_graph import cg
 from ..interfaces.monad.maybe import Maybe
 
 
@@ -8,7 +7,6 @@ def get_sat_id() -> int | None:
     If there is none, return None
     Else, return it as an int
     """
-    cg.add("get_sat_id")
     from .env import get_env
 
     env_var_v: Maybe[str] = get_env("SLURM_ARRAY_TASK_ID")

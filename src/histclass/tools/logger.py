@@ -1,4 +1,3 @@
-from .call_graph import cg
 from typing import Self, Dict, Tuple, Any
 from ..interfaces.logger import Logger as LoggerInterface
 from ..interfaces.db import Database
@@ -7,7 +6,6 @@ from ..interfaces.db import Database
 class Logger(LoggerInterface):
     """# Logger Class
 
-    Enable logging into text dump and database
 
     `add` and `addnl` adds text to a logfile
     `db_set_meta` set metadata for database recording
@@ -22,7 +20,6 @@ class Logger(LoggerInterface):
 
     def __init__(self: Self, base_path: str, echo_stdout: bool = True):
         """# Initialize Logger"""
-        cg.add("Logger.__init__")
         super().__init__(base_path, echo_stdout)
         from .results_db import ResultsDatabase
 
@@ -34,7 +31,6 @@ class Logger(LoggerInterface):
 
         If provided text is a dict or tuple, format it as a string with indentations
         """
-        cg.add("Logger.add")
         if not self.enabled:
             return self
 
@@ -60,7 +56,6 @@ class Logger(LoggerInterface):
 
         See `add` for more details
         """
-        cg.add("Logger.addnl")
         self.add(formatted_text)
         self.add("\n")
         return self

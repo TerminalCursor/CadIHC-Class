@@ -1,4 +1,3 @@
-from ....tools.call_graph import cg
 from ....interfaces.config import CompleteConfig
 from ....interfaces.data.types import DataTypes, CategoryType
 from ....interfaces.models.types import ModelType
@@ -11,7 +10,7 @@ from torch.nn.functional import elu
 
 
 class MixtureOfExperts(PyTorchModel):
-    """# GRU Model"""
+    """# Mixture of Experts Model"""
 
     model: Module
     optimizer: OptimizerT
@@ -27,6 +26,5 @@ class MixtureOfExperts(PyTorchModel):
         activation: ActivationT = elu,
     ):
         """# Model Initialization"""
-        cg.add("MixtureOfExperts.__init__")
         self.data_types = configuration.input_data_types
         self.category_type = configuration.output_data_type

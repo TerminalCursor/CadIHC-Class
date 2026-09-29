@@ -1,4 +1,3 @@
-from ....tools.call_graph import cg
 from enum import Enum
 from typing import List, Self
 
@@ -20,7 +19,6 @@ class CategoryType(Enum):
 
     def to_str(self: Self) -> str:
         """# String Representation"""
-        cg.add("CategoryType.to_str")
         if self == CategoryType.TripleNegative:
             return "tn"
         elif self == CategoryType.BasicStage:
@@ -33,7 +31,6 @@ class CategoryType(Enum):
 
     def values(self: Self) -> List[str] | None:
         """# Category Values"""
-        cg.add("CategoryType.values")
         if self == CategoryType.TripleNegative:
             return ["NTN", "TN"]
         elif self == CategoryType.BasicStage:

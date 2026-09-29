@@ -3,11 +3,10 @@
 # pyright: basic
 
 from histclass.tools.env import get_env
-from histclass.interfaces.data.types import DataTypes, CategoryType, DataframeType
+from histclass.interfaces.data.types import DataTypes, CategoryType
 from histclass.interfaces.models.types import ModelType
 
 # Global Parameters
-DATASETS_GLOB = "../Datasets/HT-*/"
 LOG_LOCATION = get_env("DUMP_LOC").catch("dump/").unwrap()
 
 MODEL_TYPES = [
@@ -51,15 +50,13 @@ if DATA_TYPE != DataTypes.ImageViT:
     if PATCH != 128:
         exit(0)
 
-# SLURM ID For Array Tasks
-from histclass.extensions.glob_ext import globs
 from histclass.tools.configuration import load_config
 from histclass.tools.training.lib import early_exit_detector
 from histclass.backends.pytorch.losses import get_loss
 from histclass.backends.pytorch.optimizers import get_optimizer
 from histclass.backends.pytorch.models.utils import get_model
 from histclass.tools.logger import Logger
-from histclass.backends.pytorch.data.dataset import TorchDataset
+from histclass.backends.pytorch.data.dataset import load_data
 from tqdm.auto import tqdm
 from numpy import array
 
@@ -88,8 +85,7 @@ logger.db_add(
 
 # Load Data
 ## Get Data Sources
-data_sources = globs(DATASETS_GLOB)
-dataset = TorchDataset(data_sources, config)
+dataset = load_data(config)
 
 # Load Model
 model = get_model(config).to("cuda")
@@ -197,7 +193,7 @@ def consensus(model, dataloaders, n_samples=1000, n_rounds=1, bootstrapped=False
         for _ in range(n_samples):
             for dataloader in dataloaders:
                 # Bootstrapped means the dataloader only applies once
-                for data, label in dataloader:
+                for data, label, _ in dataloader:
                     if buckets == None:
                         n_class = label.shape[-1]
                         buckets = [[0 for _ in range(n_class)] for _ in range(n_class)]

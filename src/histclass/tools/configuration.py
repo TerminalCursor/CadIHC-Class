@@ -1,4 +1,3 @@
-from .call_graph import cg
 from ..interfaces.data.types import DataTypes, CategoryType
 from ..interfaces.models.types import ModelType
 from ..interfaces.config import CompleteConfig
@@ -21,7 +20,6 @@ def load_config(
     patches: Number of patches
     patch_size: Size of patches
     """
-    cg.add("load_config")
     config = CompleteConfig(
         data_types,
         category_type,

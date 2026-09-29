@@ -1,4 +1,3 @@
-from ...tools.call_graph import cg
 from enum import Enum
 from typing import Self, Callable, Any, Protocol
 
@@ -21,7 +20,6 @@ class ModelType(Enum):
 
     def to_str(self: Self) -> str:
         """# Model Type to String"""
-        cg.add("ModelType.to_str")
         if self == ModelType.Attention:
             return "attention"
         elif self == ModelType.Recurrent:

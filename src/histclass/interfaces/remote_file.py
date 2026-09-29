@@ -1,4 +1,3 @@
-from ..tools.call_graph import cg
 from typing import Self, Any
 from paramiko import SSHClient, AutoAddPolicy
 from tqdm.auto import tqdm
@@ -28,7 +27,6 @@ class RemoteFile:
         username: str | None = None,
         key_filename: str | None = None,
     ):
-        cg.add("RemoteFile.__init__")
         self.remote_filename = remote_filename
         self.local_filename = local_filename
         self.hostname = hostname
@@ -37,7 +35,6 @@ class RemoteFile:
 
     def download(self: Self) -> bool:
         """# Attempt to download remote resource"""
-        cg.add("RemoteFile.download")
 
         success = False
         try:
@@ -68,7 +65,6 @@ class RemoteFile:
 
     def upload(self: Self) -> bool:
         """# Attempt to upload remote resource"""
-        cg.add("RemoteFile.upload")
 
         success = False
         try:

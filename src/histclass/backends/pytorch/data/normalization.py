@@ -1,4 +1,3 @@
-from ....tools.call_graph import cg
 from .metadata import Metadata
 from torch import Tensor
 from pandas import DataFrame  # pyright: ignore[reportMissingTypeStubs]
@@ -131,7 +130,6 @@ def transform_image(
     im_range: Tuple[int, int] = (0, 1),
 ) -> NDArray[Any]:
     """# Transform Image to Baseline Mean and Stdev"""
-    cg.add("transform_image")
     from numpy import clip, array
 
     chans: List[NDArray[Any]] = []
@@ -160,7 +158,6 @@ def _rescale(
 
     x -> (x - m) / s
     """
-    cg.add("_rescale")
     from numpy import array
 
     m = array(m)
@@ -168,14 +165,17 @@ def _rescale(
     return (x - m) / s
 
 
-def normalize_nuclei(dataframe: DataFrame, metadata: Metadata) -> Tensor:
+def normalize_nuclei(
+    dataframe: DataFrame, metadata: Metadata, classic_norm: bool = False
+) -> Tensor:
     """# Normalize Nuclei Metrics"""
-    cg.add("normalize_nuclei")
     from numpy import array
 
     data_columns = array(normalization_attributes["nuclei"]["columns"])
     nuclei_means = array(normalization_attributes["nuclei"]["means"])
     nuclei_stdev = array(normalization_attributes["nuclei"]["stdev"])
+    if classic_norm:
+        return Tensor(dataframe[data_columns].to_numpy())  # pyright: ignore
     # New Scaling
     scaled_data = _rescale(
         dataframe[data_columns].to_numpy(),  # pyright: ignore
@@ -185,22 +185,27 @@ def normalize_nuclei(dataframe: DataFrame, metadata: Metadata) -> Tensor:
     return Tensor(scaled_data)
 
 
-def normalize_energetics(dataframe: NDArray[Any], metadata: Metadata) -> Tensor:
+def normalize_energetics(
+    dataframe: NDArray[Any], metadata: Metadata, classic_norm: bool = False
+) -> Tensor:
     """# Normalize Energetics"""
-    cg.add("normalize_energetics")
     from numpy import array
 
     energetics_means = array(normalization_attributes["energetics"]["means"])
     energetics_stdev = array(normalization_attributes["energetics"]["stdev"])
+    if classic_norm:
+        max_scale = array([26_000, 700, 550, 650])
+        return Tensor(dataframe / max_scale)
     scaled_data = _rescale(
         dataframe, energetics_means, energetics_stdev  # pyright: ignore
     )
     return Tensor(scaled_data)
 
 
-def normalize_metrics(dataframe: DataFrame, metadata: Metadata) -> Tensor:
+def normalize_metrics(
+    dataframe: DataFrame, metadata: Metadata, classic_norm: bool = False
+) -> Tensor:
     """# Normalize Morphology Metrics"""
-    cg.add("normalize_metrics")
     from numpy import array
 
     data_columns = array(normalization_attributes["metric"]["columns"])
@@ -213,6 +218,8 @@ def normalize_metrics(dataframe: DataFrame, metadata: Metadata) -> Tensor:
     scaled_data = dataframe[data_columns].to_numpy() * prescale  # pyright: ignore
     max_scale = array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     scaled_data = scaled_data / max_scale  # pyright: ignore
+    if classic_norm:
+        return Tensor(scaled_data)
     # New Scaling
     scaled_data = _rescale(
         dataframe[data_columns].to_numpy(),  # pyright: ignore
@@ -222,22 +229,22 @@ def normalize_metrics(dataframe: DataFrame, metadata: Metadata) -> Tensor:
     return Tensor(scaled_data)
 
 
-def normalize_metrics_nuclei(dataframe: DataFrame, metadata: Metadata) -> Tensor:
+def normalize_metrics_nuclei(
+    dataframe: DataFrame, metadata: Metadata, classic_norm: bool = False
+) -> Tensor:
     """# Normalize Metrics and Nuclei
 
     Normalize both while retaining the correspondances
     """
-    cg.add("normalize_metrics_nuclei")
     from torch import cat
 
-    metrics_tensor = normalize_metrics(dataframe, metadata)
-    nuclei_tensor = normalize_nuclei(dataframe, metadata)
+    metrics_tensor = normalize_metrics(dataframe, metadata, classic_norm=classic_norm)
+    nuclei_tensor = normalize_nuclei(dataframe, metadata, classic_norm=classic_norm)
     return cat([metrics_tensor, nuclei_tensor], dim=1)
 
 
 def normalize_image(im: NDArray[Any], also_intensity: bool = False) -> Tensor:
     """# Normalize Image"""
-    cg.add("normalize_image")
     # Ensure W, H, and C channels
     assert len(im.shape) == 3
     # Ensure in the order CWH

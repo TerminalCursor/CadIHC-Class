@@ -1,4 +1,3 @@
-from ....tools.call_graph import cg
 from ....interfaces.data.types import DataTypes, CategoryType, DataframeType
 from .normalization import *
 from .metadata import Metadata
@@ -7,16 +6,16 @@ from torch import Tensor
 
 def to_ohe(index: int, maximum: int) -> Tensor:
     """# Convert to One-hot encoding"""
-    cg.add("to_ohe")
     from torch import long
     from torch.nn.functional import one_hot
 
     return one_hot(Tensor([index]).to(long), maximum)
 
 
-def get_data(source: str, dtype: DataTypes, metadata: Metadata) -> Tensor | None:
+def get_data(
+    source: str, dtype: DataTypes, metadata: Metadata, classic_norm: bool = False
+) -> Tensor | None:
     """# Load the requested data from the source"""
-    cg.add("get_data")
     from os.path import exists
 
     if not dtype.is_valid():
@@ -55,7 +54,7 @@ def get_data(source: str, dtype: DataTypes, metadata: Metadata) -> Tensor | None
         data = read_csv(source + "/Metrics.csv")
         if data.shape[0] == 0:
             return None
-        return normalize_metrics(data, metadata)
+        return normalize_metrics(data, metadata, classic_norm=classic_norm)
 
     elif dtype == DataTypes.Energetics:
         # Energetics Data
@@ -67,7 +66,7 @@ def get_data(source: str, dtype: DataTypes, metadata: Metadata) -> Tensor | None
         data = np_load(source + "/Energetics.npy")
         if data.shape[0] == 0:
             return None
-        return normalize_energetics(data, metadata)
+        return normalize_energetics(data, metadata, classic_norm=classic_norm)
 
     elif dtype == DataTypes.Morphology | DataTypes.Energetics:
         # Energetics Data
@@ -86,8 +85,8 @@ def get_data(source: str, dtype: DataTypes, metadata: Metadata) -> Tensor | None
             return None
         if data_e.shape[0] == 0:
             return None
-        data_m = normalize_metrics(data_m, metadata)
-        data_e = normalize_energetics(data_e, metadata)
+        data_m = normalize_metrics(data_m, metadata, classic_norm=classic_norm)
+        data_e = normalize_energetics(data_e, metadata, classic_norm=classic_norm)
         data_m = data_m[: min(data_e.shape[0], data_m.shape[0]), ...]
         data_e = data_e[: min(data_e.shape[0], data_m.shape[0]), ...]
         data = cat([data_m, data_e], dim=1)
@@ -103,7 +102,7 @@ def get_data(source: str, dtype: DataTypes, metadata: Metadata) -> Tensor | None
         data = read_csv(source + "/CNJoinedMetrics.csv")
         if data.shape[0] == 0:
             return None
-        return normalize_nuclei(data, metadata)
+        return normalize_nuclei(data, metadata, classic_norm=classic_norm)
 
     elif dtype == DataTypes.Morphology | DataTypes.Nuclei:
         # Morphology and Nuclei Data
@@ -115,7 +114,7 @@ def get_data(source: str, dtype: DataTypes, metadata: Metadata) -> Tensor | None
         data = read_csv(source + "/CNJoinedMetrics.csv")
         if data.shape[0] == 0:
             return None
-        return normalize_metrics_nuclei(data, metadata)
+        return normalize_metrics_nuclei(data, metadata, classic_norm=classic_norm)
 
     return None
 
@@ -124,7 +123,6 @@ def get_metadata_labels(
     source: str, ctype: CategoryType
 ) -> Tuple[Metadata, Tensor] | Tuple[None, None]:
     """# Get Labels as a One-Hot Encoding"""
-    cg.add("get_metadata_labels")
     from os.path import exists
     from json import load
 

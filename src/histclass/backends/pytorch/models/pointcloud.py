@@ -1,4 +1,3 @@
-from ....tools.call_graph import cg
 from ....interfaces.config import CompleteConfig
 from ....interfaces.data.types import DataTypes, CategoryType
 from ....interfaces.models.types import ModelType
@@ -23,7 +22,6 @@ class SimpleHiddenLayer(Module):
         activation: ActivationT = elu,
     ):
         """# Initialize Simple Hidden Layer"""
-        cg.add("SimpleHiddenLayer.__init__")
         super(SimpleHiddenLayer, self).__init__()
         self.layer = nn.Linear(dim_in, dim_out)
         self.dropout = nn.Dropout(dropout)
@@ -31,7 +29,6 @@ class SimpleHiddenLayer(Module):
 
     def forward(self: Self, x: Tensor) -> Tensor:
         """# Forward pass of simple hidden layer"""
-        cg.add("SimpleHiddenLayer.forward")
         x = self.layer(x)
         x = self.activation(x)
         x = self.dropout(x)
@@ -52,7 +49,6 @@ class AttentionBlock(Module):
         activation: ActivationT = elu,
     ):
         """# Initialize Attention Block"""
-        cg.add("AttentionBlock.__init__")
         super(AttentionBlock, self).__init__()
         self.attention_layer = nn.MultiheadAttention(
             embed_dim, num_heads, dropout=dropout, batch_first=True
@@ -68,7 +64,6 @@ class AttentionBlock(Module):
         """# Forward pass
 
         x: [N_batch, N_seq, N_dim]"""
-        cg.add("AttentionBlock.forward")
         dx, _ = self.attention_layer(x, x, x)
         X_hat = x + dx
         X_norm = self.attention_norm(X_hat)
@@ -85,12 +80,10 @@ class CloudFlatten(Module):
 
     def __init__(self: Self):
         """# Cloud Flatten Init"""
-        cg.add("CloudFlatten.__init__")
         super(CloudFlatten, self).__init__()
 
     def forward(self: Self, x: Tensor) -> Tensor:
         """# Flatten Last Two Dimensions"""
-        cg.add("CloudFlatten.forward")
         x_shape = (*x.shape[:-2], x.shape[-2] * x.shape[-1])
         return x.reshape(x_shape)
 
@@ -105,14 +98,12 @@ class CloudFill(Module):
 
         max_points: The desired size of the point cloud
         min_points: The minimal size of the starting point cloud"""
-        cg.add("CloudFill.__init__")
         super(CloudFill, self).__init__()
         self.max_points = max_points
         self.min_points = min_points
 
     def forward(self: Self, x: Tensor) -> Tensor:
         """# Reshape given cloud to desired length"""
-        cg.add("CloudFill.forward")
         from torch import cat, zeros
 
         # Ensure cloud size is maintained
@@ -146,7 +137,6 @@ class PyTorchPointcloudModel(Module):
         activation: ActivationT = elu,
     ):
         """# PyTorch Pointcloud Model"""
-        cg.add("PyTorchPointcloudModel.__init__")
         super(PyTorchPointcloudModel, self).__init__()
         assert configuration.pointcloud_config is not None
         self.embed_dim = configuration.input_data_types.dimensionality()
@@ -217,7 +207,6 @@ class PyTorchPointcloudModel(Module):
 
     def forward(self: Self, x: Tensor) -> Tensor:
         """# Procedure for Forward Pass"""
-        cg.add("PyTorchPointcloudModel.forward")
         x = self.cloud_fill(x)
         for attention_layer in self.attention_layers:
             x = attention_layer(x)
@@ -243,7 +232,6 @@ class PointcloudModel(PyTorchModel):
         activation: ActivationT = elu,
     ):
         """# Model Initialization"""
-        cg.add("PointcloudModel.__init__")
         self.data_types = configuration.input_data_types
         self.category_type = configuration.output_data_type
         self.model = PyTorchPointcloudModel(configuration, activation)

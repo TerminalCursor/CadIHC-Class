@@ -1,0 +1,30 @@
+name: Python Tests
+run-name: Testing code
+on:
+  workflow-run:
+    workflows: [ "Format Python Source" ]
+    types:
+      - completed
+  push:
+    branches:
+      - master
+  pull:
+    types: [open, edited, synchronize]
+    branches:
+      - master
+      - tests
+
+jobs:
+  Python-Test-Suite:
+    runs-on: ubuntu-base
+    container:
+      image: custom-runner:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 🧪 Run Tester
+        run: |
+          CONDA_OVERRIDE_CUDA="12.5" pixi r test
+      - name: 🖍️ Verifying Types
+        run: |
+          CONDA_OVERRIDE_CUDA="12.5" pixi r typing
+
