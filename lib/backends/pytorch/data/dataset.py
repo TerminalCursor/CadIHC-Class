@@ -1,0 +1,220 @@
+from ....tools.call_graph import cg
+from ....interfaces.data.dataset import Dataset as DatasetInterface
+from ....interfaces.data.types import DataTypes, CategoryType, DataframeType
+from ....interfaces.models.types import ModelType
+from ....interfaces.config import CompleteConfig
+from .utils import get_metadata_labels, get_data
+from .dataframe import TorchDataframe
+from typing import Self, List, Tuple, Any
+from torch.utils.data import DataLoader
+
+
+from torch.utils.data import Dataset
+from torch import Tensor
+
+
+class PointcloudDataframe(Dataset, TorchDataframe):
+    """# Dataframe for Pointclouds
+    Implements my interface and the Pytorch Dataset Interface
+
+    min_seq_length: What the smallest possible sentence should be
+    seq_len: What the size of the sentence should be
+    mask_p: Probability to mask some of the sentence
+    """
+
+    min_seq_length: int = 10
+    seq_len: int = 20
+    mask_p: float = 0.2
+
+    def to(self: Self, *args) -> Self:
+        """# Move dataset to device and dtype"""
+        cg.add("PointcloudDataframe.to")
+        self.data = self.data.to(*args)
+        self.labels = self.labels.to(*args)
+        return self
+
+    def __getitem__(self: Self, idx: int) -> Tuple[Tensor, Tensor]:
+        """# Get Item
+
+        Get Data and Label from Index
+        Generates a sentence on the fly
+        """
+        cg.add("PointcloudDataframe.__getitem__")
+        from torch import zeros, randint, rand, randperm
+
+        output_data = zeros(
+            self.seq_len,
+            *self.data.shape[1:],
+            device=self.data.device,
+            dtype=self.data.dtype
+        )
+        r_len = randint(self.min_seq_length, self.seq_len, (1,)).item()
+        n = self.seq_len
+        if rand((1)).item() < self.mask_p:
+            n = r_len
+        n = min(self.seq_len, self.data.shape[0], n)
+        output_data[:n, ...] = self.data[randperm(self.data.size()[0]), ...][:n, ...]
+        return output_data, self.labels
+
+    def __len__(self: Self) -> int:
+        """# Length = 1"""
+        cg.add("PointcloudDataframe.__len__")
+        return 1
+
+
+class ImageDataframe(Dataset, TorchDataframe):
+    """# Dataframe for Images
+    Implements my interface and the Pytorch Dataset Interface
+
+    width/ height: Image dimensions
+    """
+
+    height: int = 2560
+    width: int = 1920
+
+    def __init__(
+        self: Self,
+        source: str,
+        input_dtypes: DataTypes,
+        output_dtype: CategoryType,
+        name: str = "",
+        data: Any = None,
+        labels: Any = None,
+        usage: DataframeType = DataframeType.Unknown,
+    ):
+        """# Image Dataset Initialization
+
+        Also automatically records image dimensions
+        """
+        cg.add("ImageDataframe.__init__")
+        super(TorchDataframe, self).__init__(
+            source, input_dtypes, output_dtype, name, data, labels, usage
+        )
+        self.width = self.data.shape[1]
+        self.height = self.data.shape[2]
+
+    def to(self: Self, *args) -> Self:
+        """# Move dataset to device and dtype"""
+        cg.add("ImageDataframe.to")
+        self.data = self.data.to(*args)
+        self.labels = self.labels.to(*args)
+        return self
+
+    def __getitem__(self: Self, idx: int) -> Tuple[Tensor, Tensor]:
+        """# Get Item
+
+        Get Data and Label from Index
+        Generates a sentence on the fly
+        """
+        cg.add("ImageDataframe.__getitem__")
+        from torch.nn.functional import pad
+
+        self.data = pad(
+            self.data,
+            (
+                0,
+                self.height - self.data.shape[2],
+                0,
+                self.width - self.data.shape[1],
+                0,
+                0,
+            ),
+        )
+        return self.data, self.labels
+
+    def __len__(self: Self) -> int:
+        """# Length = 1"""
+        cg.add("ImageDataframe.__len__")
+        return 1
+
+
+class TorchDataset(DatasetInterface):
+    """# Dataset
+
+    Contains:
+    data_types: DataType of the samples
+    category_type: Category Type of the samples
+
+    data_frames: List of Dataframes loaded from `sources`
+    Any incomplete source is excluded
+    """
+
+    def __init__(self: Self, sources: List[str], configuration: CompleteConfig):
+        """# Get Data from Sources"""
+        cg.add("TorchDataset.__init__")
+        super().__init__(sources, configuration)
+        DataframeInit = (
+            ImageDataframe
+            if self.data_types in [DataTypes.ImageCNN, DataTypes.ImageViT]
+            else PointcloudDataframe
+        )
+        for source in sources:
+            metadata, labels = get_metadata_labels(source, self.category_type)
+            if metadata is None:
+                continue
+            data = get_data(source, self.data_types, metadata)
+            if data is None:
+                continue
+            if labels is None:
+                continue
+            usage = metadata.assignment
+            data_frame = DataframeInit(
+                source,
+                self.data_types,
+                self.category_type,
+                name="",
+                data=data,
+                labels=labels,
+                usage=usage,
+            )
+            if self.data_types not in [DataTypes.ImageCNN, DataTypes.ImageViT]:
+                assert isinstance(data_frame, PointcloudDataframe)
+                assert configuration.pointcloud_config is not None
+                data_frame.min_seq_length = configuration.pointcloud_config.min_points
+                data_frame.seq_len = configuration.pointcloud_config.max_points
+            else:
+                assert isinstance(data_frame, ImageDataframe)
+                assert configuration.image_values is not None
+                data_frame.width = configuration.image_values.window_width
+                data_frame.height = configuration.image_values.window_height
+            self.data_frames.append(data_frame)
+
+    def get_dataloaders(self: Self) -> List[DataLoader]:
+        """# Get Dataloaders"""
+        cg.add("TorchDataset.get_dataloaders")
+        from torch import stack, bincount, double
+        from torch.utils.data import WeightedRandomSampler, random_split, ConcatDataset
+
+        dataloaders = []
+
+        def get_dataloader(usage: DataframeType | None = None) -> DataLoader:
+            """# Get Dataloader for Usage"""
+            cg.add("TorchDataset.get_dataloaders.get_dataloader")
+            dataset = self.data_frames
+            if usage is not None:
+                dataset = [
+                    self.data_frames[index]
+                    for index in range(len(self.data_frames))
+                    if self.data_frames[index].usage == usage
+                ]
+            labels = stack([dataset[index].labels for index in range(len(dataset))])
+            labels = labels.argmax(1)
+            l_bincount = bincount(labels)
+            l_weights_v = 1.0 / l_bincount
+            l_weights = Tensor(
+                [l_weights_v[labels[idx]] for idx in range(len(labels))]
+            ).to(double)
+            sampler = WeightedRandomSampler(
+                l_weights, len(l_weights), replacement=True  # pyright: ignore
+            )
+            new_dataset = ConcatDataset(dataset)  # pyright: ignore
+            dataloader = DataLoader(
+                new_dataset, batch_size=self.batch_size, sampler=sampler
+            )
+            return dataloader
+
+        # Training Dataset
+        dataloaders.append(get_dataloader(DataframeType.Training))
+        dataloaders.append(get_dataloader(DataframeType.Validation))
+        dataloaders.append(get_dataloader())
+        return dataloaders

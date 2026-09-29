@@ -1,0 +1,244 @@
+from ....tools.call_graph import cg
+from ....interfaces.models.model import Model
+from ....interfaces.config import CompleteConfig
+from ....interfaces.data.dataset import Dataset
+from .interface import PyTorchModel
+from ..data.dataset import PointcloudDataframe
+from typing import Self, Callable, Any
+from torch.nn import Module, ModuleList, Sequential
+from torch import Tensor
+from torch.nn.functional import elu
+from torch import nn
+
+
+class SimpleHiddenLayer(Module):
+    """# Simple Hidden Layer"""
+
+    def __init__(
+        self: Self,
+        dim_in: int,
+        dim_out: int,
+        dropout: float = 0.1,
+        activation: Callable = elu,
+    ):
+        """# Initialize Simple Hidden Layer"""
+        cg.add("SimpleHiddenLayer.__init__")
+        super(SimpleHiddenLayer, self).__init__()
+        self.layer = nn.Linear(dim_in, dim_out)
+        self.dropout = nn.Dropout(dropout)
+        self.activation = activation
+
+    def forward(self: Self, x: Tensor) -> Tensor:
+        """# Forward pass of simple hidden layer"""
+        cg.add("SimpleHiddenLayer.forward")
+        x = self.layer(x)
+        x = self.activation(x)
+        x = self.dropout(x)
+        return x
+
+
+class AttentionBlock(Module):
+    """# Attention Block
+
+    FF(MHA(x))"""
+
+    def __init__(
+        self: Self,
+        embed_dim: int,
+        num_heads: int,
+        dim_feedforward: int,
+        dropout: float = 0.1,
+        activation: Callable = elu,
+    ):
+        """# Initialize Attention Block"""
+        cg.add("AttentionBlock.__init__")
+        super(AttentionBlock, self).__init__()
+        self.attention_layer = nn.MultiheadAttention(
+            embed_dim, num_heads, dropout=dropout, batch_first=True
+        )
+        self.attention_norm = nn.LayerNorm(embed_dim)
+        self.feedforward_layer = nn.Linear(embed_dim, dim_feedforward)
+        self.feedforward_dropout = nn.Dropout(dropout)
+        self.output_layer = nn.Linear(dim_feedforward, embed_dim)
+        self.output_dropout = nn.Dropout(dropout)
+        self.activation = activation
+
+    def forward(self: Self, x: Tensor) -> Tensor:
+        """# Forward pass
+
+        x: [N_batch, N_seq, N_dim]"""
+        cg.add("AttentionBlock.forward")
+        dx, _ = self.attention_layer(x, x, x)
+        X_hat = x + dx
+        X_norm = self.attention_norm(X_hat)
+
+        z = self.feedforward_dropout(self.activation(self.feedforward_layer(X_norm)))
+        z = self.output_dropout(self.activation(self.output_layer(z)))
+        return z
+
+
+class CloudFlatten(Module):
+    """# Flatten Point Cloud
+
+    Useful to feed entire cloud to classifier model after attending"""
+
+    def __init__(self: Self):
+        """# Cloud Flatten Init"""
+        cg.add("CloudFlatten.__init__")
+        super(CloudFlatten, self).__init__()
+
+    def forward(self: Self, x: Tensor) -> Tensor:
+        """# Flatten Last Two Dimensions"""
+        cg.add("CloudFlatten.forward")
+        x_shape = (*x.shape[:-2], x.shape[-2] * x.shape[-1])
+        return x.reshape(x_shape)
+
+
+class CloudFill(Module):
+    """# Pad Cloud
+
+    Useful to pad cloud to appropriate size to subsequent model layers"""
+
+    def __init__(self: Self, max_points: int, min_points: int = 0):
+        """# Initialization
+
+        max_points: The desired size of the point cloud
+        min_points: The minimal size of the starting point cloud"""
+        cg.add("CloudFill.__init__")
+        super(CloudFill, self).__init__()
+        self.max_points = max_points
+        self.min_points = min_points
+
+    def forward(self: Self, x: Tensor) -> Tensor:
+        """# Reshape given cloud to desired length"""
+        cg.add("CloudFill.forward")
+        from torch import cat, zeros
+
+        # Ensure cloud size is maintained
+        assert (
+            x.shape[-2] >= self.min_points
+        ), f"Cloud must at least be of size {self.min_points}"
+        assert x.shape[-2] <= self.max_points, "Point Count Exceeded"
+        # Quick return for correctly sized clouds
+        if x.shape[-2] == self.max_points:
+            return x
+        # Otherwise pad with zeros
+        z_shape = (*x.shape[:-2], self.max_points - x.shape[-2], x.shape[-1])
+        x = cat((x, zeros(*z_shape).to(x.device)), dim=-2)
+        return x
+
+
+class PyTorchPointcloudModel(Module):
+    embed_dim: int
+    max_points: int
+    num_head: int
+    min_points: int
+    n_blocks: int
+    n_ff_nodes: int
+    n_ff_layers: int
+    dropout: float
+    dropout_output: bool
+
+    def __init__(
+        self: Self,
+        dataset: Dataset,
+        configuration: CompleteConfig,
+        activation: Callable = elu,
+    ):
+        """# PyTorch Pointcloud Model"""
+        cg.add("PyTorchPointcloudModel.__init__")
+        super(PyTorchPointcloudModel, self).__init__()
+        assert isinstance(dataset.data_frames[0], PointcloudDataframe)
+        assert configuration.pointcloud_config is not None
+        self.embed_dim = dataset.data_frames[0].data.shape[-1]
+        self.n_classes = dataset.data_frames[0].labels.shape[-1]
+        self.max_points = configuration.pointcloud_config.max_points
+        self.max_points = dataset.data_frames[0].seq_len
+        self.min_points = dataset.data_frames[0].min_seq_length
+        self.num_head = self.embed_dim
+        self.n_blocks = configuration.pointcloud_config.n_blocks
+        self.n_ff_nodes = configuration.pointcloud_config.n_ff_nodes
+        self.n_ff_layers = configuration.pointcloud_config.n_ff_layers
+        self.dropout = configuration.pointcloud_config.dropout
+        self.dropout_output = configuration.pointcloud_config.dropout_output
+        self.activation = activation
+        self.cloud_fill = CloudFill(self.max_points, self.min_points)
+        self.attention_layers = ModuleList(
+            [
+                AttentionBlock(
+                    self.embed_dim,
+                    self.num_head,
+                    self.n_ff_nodes,
+                    dropout=self.dropout,
+                    activation=self.activation,
+                )
+                for _ in range(self.n_blocks)
+            ]
+        )
+        self.cloud_flatten = CloudFlatten()
+        classifier_layers = []
+        assert isinstance(self.n_ff_layers, int)
+        assert self.n_ff_layers > 0
+        if self.n_ff_layers == 1:
+            classifier_layers.append(
+                SimpleHiddenLayer(
+                    self.embed_dim * self.max_points,
+                    self.n_classes,
+                    dropout=self.dropout if self.dropout_output else 0,
+                    activation=lambda x: x,
+                )
+            )
+        else:
+            classifier_layers.append(
+                SimpleHiddenLayer(
+                    self.embed_dim * self.max_points,
+                    self.n_ff_nodes,
+                    dropout=self.dropout,
+                )
+            )
+            for _ in range(self.n_ff_layers - 2):
+                classifier_layers.append(
+                    SimpleHiddenLayer(
+                        self.n_ff_nodes,
+                        self.n_ff_nodes,
+                        dropout=self.dropout,
+                    )
+                )
+            classifier_layers.append(
+                SimpleHiddenLayer(
+                    self.n_ff_nodes,
+                    self.n_classes,
+                    dropout=self.dropout if self.dropout_output else 0,
+                    activation=lambda x: x,
+                )
+            )
+        self.classifier = Sequential(*classifier_layers)
+        self.transfer = nn.functional.sigmoid
+
+    def forward(self: Self, x: Tensor) -> Tensor:
+        """# Procedure for Forward Pass"""
+        cg.add("PyTorchPointcloudModel.forward")
+        x = self.cloud_fill(x)
+        for attention_layer in self.attention_layers:
+            x = attention_layer(x)
+        X_t = self.cloud_flatten(x)
+        classified = self.classifier(X_t)
+        return self.transfer(classified)
+
+
+class PointcloudModel(PyTorchModel):
+    """# Pointcloud Model"""
+
+    model: Module
+    optimizer: Callable
+    loss_fn: Callable
+
+    def __init__(
+        self: Self,
+        dataset: Dataset,
+        configuration: CompleteConfig,
+        activation: Callable = elu,
+    ):
+        """# Model Initialization"""
+        cg.add("PointcloudModel.__init__")
+        self.model = PyTorchPointcloudModel(dataset, configuration, activation)

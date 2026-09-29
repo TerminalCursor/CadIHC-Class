@@ -1,0 +1,41 @@
+[workspace]
+channels = ["pytorch", "nvidia", "conda-forge"]
+channel-priority = "disabled"
+description = "Add a short description here"
+name = "GeneralPyTorch"
+platforms = ["linux-aarch64", "linux-64", "osx-64"]
+version = "0.1.0"
+
+[tasks]
+
+[system-requirements]
+cuda = "12.5"
+
+[dependencies]
+
+[pypi-dependencies]
+
+[environments]
+training = ["training"]
+
+[feature.training.dependencies]
+python = ">=3.13"
+pip = "*"
+pytorch = ">=2.10.0,<3"
+torchvision = ">=0.25.0,<0.26"
+numpy = ">=2.4.2,<3"
+matplotlib = ">=3.10.8,<4"
+scipy = ">=1.17.0,<2"
+pandas = ">=3.0.0,<4"
+tqdm = ">=4.67.3,<5"
+pyright = ">=1.1.408,<2"
+scikit-learn = ">=1.8.0,<2"
+python-graphviz = ">=0.21,<0.22"
+black = ">=26.1.0,<27"
+ipykernel = "*"
+ipywidgets = "*"
+
+[feature.training.tasks]
+classifier = {cmd = "python3 Run.py"}
+#roc = {cmd = "python3 LoadBest.py"}
+roc = {cmd = "python3 BoxBest.py"}

@@ -1,0 +1,8 @@
+/*
+/**/*.*
+!pc_util
+!lib
+!/**/*.py
+!.gitignore
+!pixi.lock
+!pixi.toml
