@@ -12,6 +12,16 @@ from torch import nn
 
 
 class PyTorchGru(Module):
+    """
+    A PyTorch implementation of a GRU (Gated Recurrent Unit) neural network.
+
+    Attributes:
+        hidden_size (int): The size of the hidden state.
+        num_layers (int): The number of layers in the RNN.
+        rnn (nn.GRU): The underlying RNN module.
+        fc (nn.Linear): The final classification layer.
+    """
+
     def __init__(
         self: Self,
         input_size: int,
@@ -20,6 +30,16 @@ class PyTorchGru(Module):
         num_classes: int,
         dropout: float = 0.0,
     ):
+        """
+        Initialize the PyTorchGru model.
+
+        Args:
+            input_size (int): Input size to the model.
+            hidden_size (int): Size of the hidden state.
+            num_layers (int): Number of layers in the RNN.
+            num_classes (int): Number of output classes.
+            dropout (float, optional): Dropout probability for the RNN. Defaults to 0.0.
+        """
         super().__init__()
 
         self.hidden_size = hidden_size
@@ -37,7 +57,13 @@ class PyTorchGru(Module):
 
     def forward(self: Self, x: Tensor) -> Tensor:
         """
-        x shape: (batch_size, seq_len, input_size)
+        Perform a forward pass through the model.
+
+        Args:
+            x (Tensor): Input tensor with shape (batch_size, seq_len, input_size).
+
+        Returns:
+            Tensor: Output tensor with shape (batch_size, num_classes).
         """
         from torch import zeros
 
@@ -57,7 +83,17 @@ class PyTorchGru(Module):
 
 
 class GruModel(PyTorchModel):
-    """# GRU Model"""
+    """
+    A PyTorch implementation of a GRU-based neural network model.
+
+    Attributes:
+        model (PyTorchGru): The underlying RNN model.
+        optimizer (OptimizerT): The model's optimizer.
+        loss_fn (LossT): The model's loss function.
+        model_type (ModelType): The type of the model.
+        data_types (DataTypes): The data types associated with the model.
+        category_type (CategoryType): The category type associated with the model.
+    """
 
     model: Module
     optimizer: OptimizerT
@@ -72,7 +108,13 @@ class GruModel(PyTorchModel):
         configuration: CompleteConfig,
         activation: ActivationT = elu,
     ):
-        """# Model Initialization"""
+        """
+        Initialize the GruModel.
+
+        Args:
+            configuration (CompleteConfig): Configuration object for the model.
+            activation (ActivationT, optional): Activation function to use. Defaults to elu.
+        """
         assert configuration.pointcloud_config is not None
         hidden_size = configuration.pointcloud_config.n_ff_nodes
         num_layers = configuration.pointcloud_config.n_ff_layers

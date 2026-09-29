@@ -12,7 +12,17 @@ from torch import nn
 
 
 class SimpleHiddenLayer(Module):
-    """# Simple Hidden Layer"""
+    """
+    # Simple Hidden Layer
+
+    This layer applies a linear transformation followed by activation and dropout.
+
+    Parameters:
+    dim_in (int): The number of input features.
+    dim_out (int): The number of output features.
+    dropout (float, optional): The dropout probability. Defaults to 0.1.
+    activation (ActivationT, optional): The activation function. Defaults to elu.
+    """
 
     def __init__(
         self: Self,
@@ -28,7 +38,15 @@ class SimpleHiddenLayer(Module):
         self.activation = activation
 
     def forward(self: Self, x: Tensor) -> Tensor:
-        """# Forward pass of simple hidden layer"""
+        """
+        # Forward pass of simple hidden layer
+
+        Parameters:
+        x (Tensor): The input tensor.
+
+        Returns:
+        Tensor: The output tensor.
+        """
         x = self.layer(x)
         x = self.activation(x)
         x = self.dropout(x)
@@ -36,9 +54,18 @@ class SimpleHiddenLayer(Module):
 
 
 class AttentionBlock(Module):
-    """# Attention Block
+    """
+    # Attention Block
 
-    FF(MHA(x))"""
+    This block applies multi-head attention followed by feedforward network.
+
+    Parameters:
+    embed_dim (int): The embedding dimension.
+    num_heads (int): The number of attention heads.
+    dim_feedforward (int): The feedforward network dimension.
+    dropout (float, optional): The dropout probability. Defaults to 0.1.
+    activation (ActivationT, optional): The activation function. Defaults to elu.
+    """
 
     def __init__(
         self: Self,
@@ -61,9 +88,15 @@ class AttentionBlock(Module):
         self.activation = activation
 
     def forward(self: Self, x: Tensor) -> Tensor:
-        """# Forward pass
+        """
+        # Forward pass
 
-        x: [N_batch, N_seq, N_dim]"""
+        Parameters:
+        x (Tensor): The input tensor.
+
+        Returns:
+        Tensor: The output tensor.
+        """
         dx, _ = self.attention_layer(x, x, x)
         X_hat = x + dx
         X_norm = self.attention_norm(X_hat)
@@ -74,24 +107,43 @@ class AttentionBlock(Module):
 
 
 class CloudFlatten(Module):
-    """# Flatten Point Cloud
+    """
+    # Flatten Point Cloud
 
-    Useful to feed entire cloud to classifier model after attending"""
+    This layer flattens the last two dimensions of the input tensor.
+
+    Parameters:
+    None
+    """
 
     def __init__(self: Self):
         """# Cloud Flatten Init"""
         super(CloudFlatten, self).__init__()
 
     def forward(self: Self, x: Tensor) -> Tensor:
-        """# Flatten Last Two Dimensions"""
+        """
+        # Flatten Last Two Dimensions
+
+        Parameters:
+        x (Tensor): The input tensor.
+
+        Returns:
+        Tensor: The flattened tensor.
+        """
         x_shape = (*x.shape[:-2], x.shape[-2] * x.shape[-1])
         return x.reshape(x_shape)
 
 
 class CloudFill(Module):
-    """# Pad Cloud
+    """
+    # Pad Cloud
 
-    Useful to pad cloud to appropriate size to subsequent model layers"""
+    This layer pads the input tensor to the desired size.
+
+    Parameters:
+    max_points (int): The maximum number of points.
+    min_points (int, optional): The minimum number of points. Defaults to 0.
+    """
 
     def __init__(self: Self, max_points: int, min_points: int = 0):
         """# Initialization
@@ -103,7 +155,15 @@ class CloudFill(Module):
         self.min_points = min_points
 
     def forward(self: Self, x: Tensor) -> Tensor:
-        """# Reshape given cloud to desired length"""
+        """
+        # Reshape given cloud to desired length
+
+        Parameters:
+        x (Tensor): The input tensor.
+
+        Returns:
+        Tensor: The reshaped tensor.
+        """
         from torch import cat, zeros
 
         # Ensure cloud size is maintained
@@ -121,6 +181,16 @@ class CloudFill(Module):
 
 
 class PyTorchPointcloudModel(Module):
+    """
+    # PyTorch Pointcloud Model
+
+    This model applies attention block followed by classification layer.
+
+    Parameters:
+    configuration (CompleteConfig): The configuration.
+    activation (ActivationT, optional): The activation function. Defaults to elu.
+    """
+
     embed_dim: int
     max_points: int
     num_head: int
@@ -206,7 +276,15 @@ class PyTorchPointcloudModel(Module):
         self.transfer = nn.functional.sigmoid
 
     def forward(self: Self, x: Tensor) -> Tensor:
-        """# Procedure for Forward Pass"""
+        """
+        # Procedure for Forward Pass
+
+        Parameters:
+        x (Tensor): The input tensor.
+
+        Returns:
+        Tensor: The output tensor.
+        """
         x = self.cloud_fill(x)
         for attention_layer in self.attention_layers:
             x = attention_layer(x)
@@ -216,7 +294,11 @@ class PyTorchPointcloudModel(Module):
 
 
 class PointcloudModel(PyTorchModel):
-    """# Pointcloud Model"""
+    """
+    # Pointcloud Model
+
+    This model inherits from PyTorchPointcloudModel.
+    """
 
     model: Module
     optimizer: OptimizerT

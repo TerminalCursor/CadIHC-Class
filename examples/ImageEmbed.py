@@ -64,12 +64,12 @@ def add_embedding(fname, non_replace=True, **kwargs):
 
 
 model_names = [
-        "ihc/models/classification/image-attention2hilograde.472cb9d6abc5f67ed226557bfaa25283c35ddae2/"
-        "ihc/models/classification/image_vt-attention2hilograde.47c2669067cb2652a166a06d9f54079adb18a8f9/"
+    "image-attention2grade.8664f3958557ae1a0886e3d0f986b022b2b6d1cd",
+    "image_vt-attention2grade.95f2f63800c98fd335b375fa1cdfcdba9de37a5f",
 ]
 
 for model_name_full, image_src in product(
-    glob(glob("ihc/models/classification/image*/")), sorted(glob("ihc/data/classification/*.*/"))
+    glob("ihc/models/classification/image*/"), glob("ihc/data/classification/*.*/")
 ):
     model_name = (
         model_name_full.replace("ihc", "")

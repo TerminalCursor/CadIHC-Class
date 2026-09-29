@@ -9,7 +9,7 @@ from json import dumps
 import pandas as pd
 
 N_pre = 100  # 100
-N_post = 200  # 2000
+N_post = 300  # 3000
 ONE_PER_TYPE = True
 N_CONSENSUS = 9
 
@@ -147,49 +147,26 @@ class BootstrappedMoEDataParser:
 
         bm = []
         for category in unique(raw_data["Category"]):
-            if not (("hilo" in category) or (category == "tn")):
-                continue
-            # if category == "tn":
-            #    continue
             data = raw_data.copy()
             cdata = data[data["Category"] == category]
-            n_classes = 3 if category in ["stage", "grade"] else 2
+            n_classes = 2 if category == "tn" else 3
             model_names = list(set(unique(cdata["FullName"])))
             # model_names = list(filter(lambda x: not x.startswith("image"), model_names))
-            # model_names = list(filter(lambda x: not x.startswith("image_vt"), model_names))
-            # if category != "tn":
-            #     model_names = list(filter(lambda x: not x.startswith("image"), model_names))
             # model_names = list(filter(lambda x: not x.startswith("latent"), model_names))
             cdata = cdata[cdata["FullName"].isin(model_names)]  # pyright: ignore
+            # model_names = [model_names[0],model_names[1]]
+            # model_names = [model_names[idx] for idx in choice(len(model_names), size=5)]
             confidences = zeros((len(model_names), n_classes))
             accuracy = zeros((len(model_names),))
             model_mapping = {
                 model_name: midx for midx, model_name in enumerate(model_names)
             }
-            model_name_arr = [""] * len(model_names)
-            for mname, idx in model_mapping.items():
-                model_name_arr[idx] = mname
-            model_name_arr = array(model_name_arr)
-
             for midx, model_name in enumerate(model_names):
                 model = download_model(model_name, metadata_only=True)
                 confidences[midx, ...] = model.confidences
                 accuracy[midx] = model.accuracy
                 del model.model
                 del model
-
-            min_accuracy = 0.75
-            mask = accuracy > min_accuracy
-
-            confidences = confidences[mask]
-            accuracy = accuracy[mask]
-            model_name_arr = model_name_arr[mask]
-            model_mapping = {
-                model_name: midx
-                for midx, model_name in enumerate(model_name_arr.tolist())
-            }
-            cdata = cdata[cdata["FullName"].isin(model_name_arr.tolist())]  # pyright: ignore
-
             if scale_with_accuracy:
                 bmmm = BootstrappedMoEModels(
                     confidences,
@@ -208,9 +185,6 @@ class BootstrappedMoEDataParser:
 
 data_source = "MoeData.pickle"
 data_source = "MoeData.boot.pickle"
-data_source = "MoeDatas/MoeData.boot.pickle"
-#data_source = "MoeDatas/.MoeDataBootPickleBackup"
-data_source = "MoeDatas/Bootstrapped260525.pickle"
 bmd = BootstrappedMoEDataParser.get(
     data_source, validation_only=True, scale_with_accuracy=False
 )
@@ -241,9 +215,7 @@ for cat, smm, smd in bmd:
     print([smd.names[idx] for idx in top_k])
     print(m_results[top_k])
 
-# for f in [bayes_3, bayes_4, bayes_5]:
-# for f in [bayes_1, bayes_2, bayes_3, bayes_4]:
-for f in [bayes_3]:
+for f in [bayes_3, bayes_4, bayes_5]:
     for cat, _smm, _smd in bmd:
         model_usage = {}
         data_usage = {}

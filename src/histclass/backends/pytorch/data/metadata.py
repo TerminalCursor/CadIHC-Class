@@ -2,9 +2,10 @@ from ....interfaces.data.types import DataframeType
 
 
 class Metadata:
-    """# Metadata Class for Sample
-
-    Demarcates the Magnification and Assignment of the Sample
+    """
+    Attributes:
+        magnification (int): The level of magnification applied to the sample.
+        assignment (DataframeType): The assigned category or type of the sample.
     """
 
     magnification: int = 20

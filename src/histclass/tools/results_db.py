@@ -6,7 +6,15 @@ from sqlite3 import Cursor
 def sqlite3_execute(
     cursor: Cursor, query: str, echo: bool = False, dry_run: bool = False
 ):
-    """# Execute Sqlite3 Query"""
+    """
+    Execute a Sqlite3 query.
+
+    Args:
+        cursor (Cursor): The Sqlite3 cursor to use for execution.
+        query (str): The query to execute.
+        echo (bool, optional): Whether to print the query before execution. Defaults to False.
+        dry_run (bool, optional): Whether to only execute the query without making changes. Defaults to False.
+    """
     if echo:
         print(query)
     if not dry_run:
@@ -31,11 +39,26 @@ class ResultsDatabase(Database):
     meta_keys: List[str] = ["timestamp", "name", "category", "learning_rate", "loss"]
 
     def __init__(self: Self, filename: str):
-        """# Set Filename to Manage"""
+        """
+        Initialize the ResultsDatabase instance.
+
+        Args:
+            filename (str): The filename to manage.
+        """
         super().__init__(filename)
 
     def add(self: Self, **results_dict: Any) -> Self:
-        """# Add Data"""
+        """
+        Add data to the database.
+
+        This method updates the `self.data` and `self.meta` dictionaries with the provided results.
+
+        Args:
+            **results_dict (Any): The key-value pairs of results to add.
+
+        Returns:
+            Self: The updated ResultsDatabase instance.
+        """
         for key in results_dict.keys():
             keyl = key.lower()
             if keyl in self.meta_keys:
@@ -49,9 +72,16 @@ class ResultsDatabase(Database):
         return self
 
     def write(self: Self, echo: bool = False) -> Self:
-        """# Insert Data
+        """
+        Write data to the database.
 
-        From `self.data`
+        This method inserts the data from `self.data` and metadata from `self.meta` into the database.
+
+        Args:
+            echo (bool, optional): Whether to print the query before execution. Defaults to False.
+
+        Returns:
+            Self: The updated ResultsDatabase instance.
         """
         import sqlite3
 

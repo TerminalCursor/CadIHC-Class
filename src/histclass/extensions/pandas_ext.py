@@ -3,56 +3,58 @@ from pandas import DataFrame, Series  # pyright: ignore[reportMissingTypeStubs]
 from numpy.typing import NDArray
 from typing import Any, Dict
 from pandera.typing import Series as SeriesT
-
-
-def wash2intseries(x: Any) -> SeriesT[int]:
-    """# Washing function for Type Checking"""
-    return x
-
-
-def wash2strseries(x: Any) -> SeriesT[str]:
-    """# Washing function for Type Checking"""
-    return x
-
-
-def wash2str(x: Any) -> str:
-    """# Washing function for Type Checking"""
-    return x
-
-
-def wash2df(x: Any) -> DataFrame:
-    """# Washing Function for Type Checking"""
-    return x
-
-
-def wash2series(x: Any) -> Series:
-    """# Washing Function for Type Checking"""
-    return x
+from ..typecheck import *
 
 
 def filter_on(self: DataFrame, column: str, value: Any) -> Series | DataFrame:
-    """# Filter a Dataframe on Column Value"""
+    """
+    Filter a DataFrame on column values.
+
+    Args:
+        self (DataFrame): Input DataFrame
+        column (str): Column name to filter
+        value (Any): Value to filter
+
+    Returns:
+        Series | DataFrame: Filtered series or DataFrame with filtered values
+    """
     df = self.copy()
     _filter: Series = wash2series(df[column] == value)
     filtered = wash2df(df[_filter]).reset_index(drop=True)
     return wash2strseries(filtered)
 
 
-def get_unique(self: DataFrame | Series, col: str | None = None) -> NDArray[Any]:
-    """# Get Unique Values from Series or DataFrame
+def get_unique(self: DataFrame | Series, column: str | None = None) -> NDArray[Any]:
+    """
+    Get unique values from a series or DataFrame.
 
-    For dataframes, a desired column can be provided
+    For dataframes, a desired column can be provided.
+
+    Args:
+        self (DataFrame | Series): Input series or DataFrame
+        column (str | None, optional): Desired column name. Defaults to None.
+
+    Returns:
+        NDArray[Any]: Unique values as numpy array
     """
     from numpy import unique
 
     if isinstance(self, DataFrame):
-        assert col is not None
-        return unique(wash2series(self[col]))
+        assert column is not None
+        return unique(wash2series(self[column]))
     return unique(self)
 
 
-def get_enumerate(self: Series) -> Dict[int, Any]:
-    """# Enumerate Unique Values in Series"""
+def get_enumerate(self: Series) -> Dict[Any, int]:
+    """
+    Enumerate unique values in a series.
+
+    Args:
+        self (Series): Input series
+
+    Returns:
+        Dict[Any, int]: Dictionary with enumated unique values
+    """
     values = self.unique()
     return {v: i for i, v in enumerate(values)}
 
@@ -64,9 +66,20 @@ def convert_timestamp(
     time_format: str = "%Y%m%d-%H%M%S-%f",
     relative: bool = True,
 ) -> DataFrame:
-    """# Convert Timestamp to Int
+    """
+    Convert timestamp column to float.
 
-    Return the new dataframe with new `col_out` column with time as an `int`
+    Return the new DataFrame with a new `col_out` column containing time as an float.
+
+    Args:
+        self (DataFrame): Input DataFrame
+        col (str, optional): Timestamp column name. Defaults to "TIMESTAMP".
+        col_out (str, optional): Output column name. Defaults to "TIME".
+        time_format (str, optional): Time format string. Defaults to "%Y%m%d-%H%M%S-%f".
+        relative (bool, optional): Whether to make values relative. Defaults to True.
+
+    Returns:
+        DataFrame: Output DataFrame with converted timestamp column
     """
     from datetime import datetime
     from numpy import array
@@ -85,6 +98,7 @@ def convert_timestamp(
     return df
 
 
+# Register custom methods onto pandas DataFrame and Series Classes
 DataFrame.filter_on = filter_on  # pyright: ignore
 DataFrame.unique = get_unique  # pyright: ignore
 DataFrame.time = convert_timestamp  # pyright: ignore

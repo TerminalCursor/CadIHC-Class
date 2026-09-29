@@ -3,9 +3,16 @@ from numpy.typing import NDArray
 
 
 def to_arr(data: List[Tuple[Any]] | NDArray[Any]) -> NDArray[Any]:
-    """# Cast a datatype to a Numpy Array
+    """
+    Cast a datatype to a Numpy Array.
 
-    If already a numpy array, ignore
+    If already a numpy array, ignore.
+
+    Args:
+        data (List[Tuple[Any]] | NDArray[Any]): The input data.
+
+    Returns:
+        NDArray[Any]: A numpy array representation of the input data.
     """
     from numpy import ndarray, array
 
@@ -19,9 +26,18 @@ def zero_slope(
     p_value: float = 0.05,
     alternative: str = "less",
 ) -> Tuple[bool, float]:
-    """# Determine if data has zero slope
+    """
+    Determine if data has zero slope.
 
-    Confidence level from `p_value`
+    Confidence level from `p_value`.
+
+    Args:
+        data (List[Tuple[Any]] | NDArray[Any]): The input data.
+        p_value (float, optional): The confidence level. Defaults to 0.05.
+        alternative (str, optional): The type of test. Defaults to "less".
+
+    Returns:
+        Tuple[bool, float]: A tuple containing the result and the slope value.
     """
     from scipy.stats import (  # pyright: ignore[reportMissingTypeStubs]
         linregress,  # pyright: ignore[reportUnknownVariableType]
@@ -35,11 +51,18 @@ def zero_slope(
 
 
 def transpose(data: List[Tuple[Any]] | NDArray[Any]) -> List[Any] | NDArray[Any]:
-    """# Transpose data
+    """
+    Transpose data.
 
     Converts between:
     [(a_1,b_1,c_1,...),(a_2,b_2,c_2,...),...]
     [(a_1,a_2,...),(b_1,b_2,...),...]
+
+    Args:
+        data (List[Tuple[Any]] | NDArray[Any]): The input data.
+
+    Returns:
+        List[Any] | NDArray[Any]: A transposed numpy array representation of the input data.
     """
     from numpy import ndarray
 
@@ -51,9 +74,18 @@ def transpose(data: List[Tuple[Any]] | NDArray[Any]) -> List[Any] | NDArray[Any]
 def mean_near(
     data: List[Tuple[Any]] | NDArray[Any], value: float | int, n_std: float = 1
 ) -> bool:
-    """# Determine if the mean is near value
+    """
+    Determine if the mean is near a given value.
 
-    Returns if the data is within `n_std` of the value
+    Returns if the data is within `n_std` of the value.
+
+    Args:
+        data (List[Tuple[Any]] | NDArray[Any]): The input data.
+        value (float | int): The target value.
+        n_std (float, optional): The number of standard deviations. Defaults to 1.
+
+    Returns:
+        bool: A boolean indicating whether the mean is near the value.
     """
     from numpy import abs
 
@@ -72,14 +104,25 @@ def early_exit_detector(
     p_cutoff: float = 0.05,
     on_index: int = 0,
 ) -> Tuple[bool, float]:
-    """# Find when loss equilibriates
+    """
+    Find when loss equilibriates.
 
     Find when the `on_index` loss has a slope of zero and is linear
     during a window of `lookback` after `start_after` iterations have occurred
-    with a confidence of `p_cutoff`
+    with a confidence of `p_cutoff`.
 
     Assume `losses` is of the form
     [(training_0,validation_0),(training_1,validation_1),...]
+
+    Args:
+        losses (List[Tuple[Any]] | NDArray[Any]): The input data.
+        start_after (int, optional): The number of iterations to wait. Defaults to 100.
+        lookback (int, optional): The number of previous samples to consider. Defaults to 600.
+        p_cutoff (float, optional): The confidence level. Defaults to 0.05.
+        on_index (int, optional): The index of the loss to check. Defaults to 0.
+
+    Returns:
+        Tuple[bool, float]: A tuple containing the result and the slope value.
     """
     data = transpose(losses)
     data = to_arr(data)

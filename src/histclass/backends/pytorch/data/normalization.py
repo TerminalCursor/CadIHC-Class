@@ -129,7 +129,21 @@ def transform_image(
     ],
     im_range: Tuple[int, int] = (0, 1),
 ) -> NDArray[Any]:
-    """# Transform Image to Baseline Mean and Stdev"""
+    """
+    Transform Image to Baseline Mean and Stdev
+
+    Args:
+        im (NDArray[Any]): Input image
+        baseline (List[Tuple[float, float]]): List of tuples containing mean and standard deviation for each channel. Defaults to [
+            (0.66652524, 0.1445229),
+            (0.62870604, 0.18943928),
+            (0.59433895, 0.22827524),
+        ].
+        im_range (Tuple[int, int]): Tuple containing minimum and maximum intensity values for normalization. Defaults to (0, 1).
+
+    Returns:
+        NDArray[Any]: Transformed image
+    """
     from numpy import clip, array
 
     chans: List[NDArray[Any]] = []
@@ -154,9 +168,16 @@ def _rescale(
     m: List[Any] | NDArray[Any] | Tensor,
     s: List[Any] | NDArray[Any] | Tensor,
 ) -> NDArray[Any] | Tensor:
-    """# Rescale data
+    """
+    Rescale data
 
-    x -> (x - m) / s
+    Args:
+        x (NDArray[Any] | Tensor): Input data
+        m (List[Any] | NDArray[Any] | Tensor): Mean values for rescaling
+        s (List[Any] | NDArray[Any] | Tensor): Standard deviation values for rescaling
+
+    Returns:
+        NDArray[Any] | Tensor: Rescaled data
     """
     from numpy import array
 
@@ -168,7 +189,17 @@ def _rescale(
 def normalize_nuclei(
     dataframe: DataFrame, metadata: Metadata, classic_norm: bool = False
 ) -> Tensor:
-    """# Normalize Nuclei Metrics"""
+    """
+    Normalize Nuclei Metrics
+
+    Args:
+        dataframe (DataFrame): Input data frame
+        metadata (Metadata): Metadata object containing magnification value
+        classic_norm (bool): Whether to use classic normalization. Defaults to False.
+
+    Returns:
+        Tensor: Normalized nuclei metrics
+    """
     from numpy import array
 
     data_columns = array(normalization_attributes["nuclei"]["columns"])
@@ -188,7 +219,17 @@ def normalize_nuclei(
 def normalize_energetics(
     dataframe: NDArray[Any], metadata: Metadata, classic_norm: bool = False
 ) -> Tensor:
-    """# Normalize Energetics"""
+    """
+    Normalize Energetics
+
+    Args:
+        dataframe (NDArray[Any]): Input data
+        metadata (Metadata): Metadata object containing magnification value
+        classic_norm (bool): Whether to use classic normalization. Defaults to False.
+
+    Returns:
+        Tensor: Normalized energetics
+    """
     from numpy import array
 
     energetics_means = array(normalization_attributes["energetics"]["means"])
@@ -205,7 +246,17 @@ def normalize_energetics(
 def normalize_metrics(
     dataframe: DataFrame, metadata: Metadata, classic_norm: bool = False
 ) -> Tensor:
-    """# Normalize Morphology Metrics"""
+    """
+    Normalize Morphology Metrics
+
+    Args:
+        dataframe (NDArray[Any]): Input data
+        metadata (Metadata): Metadata object containing magnification value
+        classic_norm (bool): Whether to use classic normalization. Defaults to False.
+
+    Returns:
+        Tensor: Normalized metrics
+    """
     from numpy import array
 
     data_columns = array(normalization_attributes["metric"]["columns"])
@@ -232,9 +283,16 @@ def normalize_metrics(
 def normalize_metrics_nuclei(
     dataframe: DataFrame, metadata: Metadata, classic_norm: bool = False
 ) -> Tensor:
-    """# Normalize Metrics and Nuclei
+    """
+    Normalize Morphology and Nuclei Metrics
 
-    Normalize both while retaining the correspondances
+    Args:
+        dataframe (NDArray[Any]): Input data
+        metadata (Metadata): Metadata object containing magnification value
+        classic_norm (bool): Whether to use classic normalization. Defaults to False.
+
+    Returns:
+        Tensor: Normalized metrics and nuclei
     """
     from torch import cat
 
@@ -244,7 +302,16 @@ def normalize_metrics_nuclei(
 
 
 def normalize_image(im: NDArray[Any], also_intensity: bool = False) -> Tensor:
-    """# Normalize Image"""
+    """
+    Normalize Image
+
+    Args:
+        im (NDArray[Any]): Input image
+        also_intensity (bool): Whether to include intensity normalization. Defaults to False.
+
+    Returns:
+        Tensor: Normalized image
+    """
     # Ensure W, H, and C channels
     assert len(im.shape) == 3
     # Ensure in the order CWH

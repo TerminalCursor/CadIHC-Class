@@ -55,22 +55,21 @@ MODEL_TYPES = [
     # ModelType.Recurrent,
 ]
 DATA_TYPES = [
-    #DataTypes.Morphology,
     #DataTypes.Morphology | DataTypes.Nuclei,
-    DataTypes.Morphology | DataTypes.Nuclei | DataTypes.Energetics,
     #DataTypes.Morphology | DataTypes.Energetics,
+    #DataTypes.Morphology,
     #DataTypes.Latent,
     #DataTypes.Nuclei,
     #DataTypes.Energetics,
-    #DataTypes.ImageCNN,
+    DataTypes.ImageCNN,
     #DataTypes.ImageViT,
 ]
 CATEGORY_TYPES = [
-    CategoryType.TripleNegative,
-    CategoryType.BinaryStage,
-    CategoryType.BinaryGrade,
+    #CategoryType.TripleNegative,
     #CategoryType.BasicStage,
     #CategoryType.Grade,
+    CategoryType.BinaryStage,
+    CategoryType.BinaryGrade,
 ]
 PATCHES = [128, 256, 512]
 
@@ -82,7 +81,7 @@ DN_COMBOS = range(len(D_COMBOS[0]))
 from histclass.tools.slurm import get_sat_id
 from itertools import product
 
-NUMBER_ITERATIONS = 10
+NUMBER_ITERATIONS = 30
 training_combinations = list(
     product(range(NUMBER_ITERATIONS), M_COMBOS, DN_COMBOS, C_COMBOS)
 )
@@ -91,7 +90,6 @@ assert not CHECKING_COUNT
 
 # Slurm Array Task ID
 SATID = get_sat_id()
-print(SATID)
 if SATID is not None:
     training_combinations = [training_combinations[SATID]]
 else:
@@ -100,11 +98,11 @@ else:
 _, MODEL_TYPE, DN_IDX, CATEGORY_TYPE = training_combinations[0]
 DATA_TYPE = D_COMBOS[0][DN_IDX]
 PATCH = D_COMBOS[1][DN_IDX]
-REMOVE_COLUMNS = D_COMBOS[2][DN_IDX]
-
-num_columns = DATA_TYPE.dimensionality()
-for v in REMOVE_COLUMNS:
-    assert v < num_columns, "Column does not exist"
+#REMOVE_COLUMNS = D_COMBOS[2][DN_IDX]
+#
+#num_columns = DATA_TYPE.dimensionality()
+#for v in REMOVE_COLUMNS:
+#    assert v < num_columns, "Column does not exist"
 
 from histclass.tools.configuration import load_config
 from histclass.tools.training.lib import early_exit_detector
@@ -113,33 +111,29 @@ from histclass.backends.pytorch.optimizers import get_optimizer
 from histclass.backends.pytorch.models.utils import get_model
 from histclass.tools.logger import Logger
 from histclass.backends.pytorch.data.dataset import load_data
-from torch.optim import lr_scheduler
 from tqdm.auto import tqdm
-from numpy import array, mean, logspace
-from numpy import round as npround
-from numpy.random import randint, rand
+from numpy import array
 
 logger = Logger(LOG_LOCATION)
 
 # Configuration
-SCHEDULE_ENABLE = rand() > 0.5
 config = load_config(DATA_TYPE, CATEGORY_TYPE, MODEL_TYPE, patches=PATCH)
-config.loss_fn = "focal_loss"
 #config.loss_fn = "cross_entropy"
 #config.loss_fn = "mse_loss"
+config.loss_fn = "focal_loss"
 config.optimizer = "AdamW"
-#config.optimizer = "Adam"
-batch_sizes = [16,32,64,128,256,512]
-config.batch_size = batch_sizes[randint(len(batch_sizes))]
-config.epochs = randint(500,1500)
-#config.epochs = 10_000
-#config.learning_rate = 5e-6
-config.learning_rate = logspace(-4, -7, 20)[randint(20)]
-config.early_exit_config.kwargs["lookback"] = 10000
-config.early_exit_config.max_failures = 10000
+config.batch_size = 32
+config.learning_rate = 1e-5
+config.epochs = 30_000
+config.early_exit_config.kwargs["lookback"] = 3_000
 if config.pointcloud_config is not None:
-    pass
-    config.pointcloud_config.n_blocks = randint(0,5)
+    config.pointcloud_config.n_blocks = 2
+if DATA_TYPE == DataTypes.ImageCNN:
+    assert config.image_values is not None
+    config.image_values.window_width /= 2
+    config.image_values.window_width = int(config.image_values.window_width)
+    config.image_values.window_height /= 2
+    config.image_values.window_height = int(config.image_values.window_height)
 loss_fn = get_loss(config).unwrap()
 optim = get_optimizer(config).unwrap()
 
@@ -157,10 +151,9 @@ logger.db_add(
 dataset = load_data(config)
 
 # Load Model
-model = get_model(config).to(config.device)
+model = get_model(config).to("cuda")
 model.set_optimizer(optim)
 model.optimizer = model.optimizer(model.model.parameters(), lr=config.learning_rate)
-scheduler = lr_scheduler.StepLR(model.optimizer, step_size=100, gamma=0.95)
 print(model.model)
 
 dataloaders = dataset.get_dataloaders()
@@ -184,27 +177,16 @@ epoch_metrics[3].append((t_mat, v_mat))
 
 early_exit_detections = 0
 logger.echo_stdout = False
-dataloaderss = [*t_class_dataloaders, t_dataloader]
-pbar = tqdm(range(config.epochs))
-for epoch in pbar:
+for epoch in tqdm(range(config.epochs)):
     t_loss, t_acc, t_mat = model.train_epoch(t_dataloader, loss_fn)
     v_loss, v_acc, v_mat = model.eval_epoch(v_dataloader, loss_fn)
     epoch_metrics[0].append(epoch + 1)
     epoch_metrics[1].append((t_loss, v_loss))
     epoch_metrics[2].append((t_acc, v_acc))
     epoch_metrics[3].append((t_mat, v_mat))
-    ta, va = zip(*epoch_metrics[2])
-    pbar.set_postfix(tacc=mean(ta[-100:]), vacc=mean(va[-100:]))
 
-    N = 15
-    t_acc_n = int(round(t_acc * N))
-    v_acc_n = int(round(v_acc * N))
-    t_acc_v = list(" " * (N+1))
-    t_acc_v[t_acc_n] = "T"
-    t_acc_v[v_acc_n] = "V"
-    t_acc_v = "".join(t_acc_v)
     logger.addnl(
-            f"{epoch_metrics[0][-1]:>5}: {t_loss:7.4f} {v_loss:7.4f}  {t_acc*100:6.2f} {v_acc*100:6.2f}  |{t_acc_v}| {model.optimizer.param_groups[0]['lr']:8.2e}"
+        f"{epoch_metrics[0][-1]:>5}: {t_loss:7.4f} {v_loss:7.4f}  {t_acc*100:6.2f} {v_acc*100:6.2f}"
     )
 
     eed, slope = early_exit_detector(
@@ -216,21 +198,18 @@ for epoch in pbar:
         early_exit_detections = 0
     if early_exit_detections > config.early_exit_config.max_failures:
         break
-    if SCHEDULE_ENABLE:
-        scheduler.step()
 logger.echo_stdout = True
 
 epochs = epoch_metrics[0]
 t_losses, v_losses = zip(*epoch_metrics[1])
 plt.clf()
+plt.plot(epochs, t_losses)
 plt.plot(epochs, v_losses)
-plt.plot(epochs, t_losses, alpha=0.5)
 plt.savefig("outputs/losses.png")
 t_losses, v_losses = zip(*epoch_metrics[2])
 plt.clf()
+plt.plot(epochs, t_losses)
 plt.plot(epochs, v_losses)
-plt.plot(epochs, t_losses, alpha=0.5)
-plt.ylim(0,1)
 plt.savefig("outputs/accuracies.png")
 
 # Posttraining Metrics
@@ -243,38 +222,38 @@ epoch_metrics[1].append((t_loss, v_loss))
 epoch_metrics[2].append((t_acc, v_acc))
 epoch_metrics[3].append((t_mat, v_mat))
 
-## ## logger.db_add(
-## ##     total_accuracy=T_acc,
-## ##     training_accuracy=t_acc,
-## ##     validation_accuracy=v_acc,
-## ##     total_raw=T_mat.tolist(),
-## ##     training_raw=t_mat.tolist(),
-## ##     validation_raw=v_mat.tolist(),
-## ## ).db_write()
-## epochs = array(epoch_metrics[0])
-## losses = array(epoch_metrics[1])
-## accuracies = array(epoch_metrics[2])
-## epoch_matrices = array(epoch_metrics[3])
-## 
-## # from matplotlib import pyplot as plt
-## #
-## # plt.clf()
-## # plt.plot(epochs, losses)
-## # plt.savefig("outputs/losses.png", dpi=600)
-## # plt.clf()
-## # plt.plot(
-## #    epochs[-config.early_exit_config.kwargs["lookback"] - 1 : -1],
-## #    losses[-config.early_exit_config.kwargs["lookback"] - 1 : -1, :],
-## # )
-## # plt.savefig("outputs/last_losses.png", dpi=600)
-## # plt.clf()
-## # plt.plot(epochs, accuracies)
-## # plt.savefig("outputs/accuracies.png", dpi=600)
-## 
-## logger.addnl(str(epochs))
-## logger.addnl(str(losses))
-## logger.addnl(str(accuracies))
-## logger.addnl(str(epoch_matrices))
+## logger.db_add(
+##     total_accuracy=T_acc,
+##     training_accuracy=t_acc,
+##     validation_accuracy=v_acc,
+##     total_raw=T_mat.tolist(),
+##     training_raw=t_mat.tolist(),
+##     validation_raw=v_mat.tolist(),
+## ).db_write()
+epochs = array(epoch_metrics[0])
+losses = array(epoch_metrics[1])
+accuracies = array(epoch_metrics[2])
+epoch_matrices = array(epoch_metrics[3])
+
+# from matplotlib import pyplot as plt
+#
+# plt.clf()
+# plt.plot(epochs, losses)
+# plt.savefig("outputs/losses.png", dpi=600)
+# plt.clf()
+# plt.plot(
+#    epochs[-config.early_exit_config.kwargs["lookback"] - 1 : -1],
+#    losses[-config.early_exit_config.kwargs["lookback"] - 1 : -1, :],
+# )
+# plt.savefig("outputs/last_losses.png", dpi=600)
+# plt.clf()
+# plt.plot(epochs, accuracies)
+# plt.savefig("outputs/accuracies.png", dpi=600)
+
+logger.addnl(str(epochs))
+logger.addnl(str(losses))
+logger.addnl(str(accuracies))
+logger.addnl(str(epoch_matrices))
 
 from numpy import diag
 
@@ -310,38 +289,38 @@ def consensus(model, dataloaders, n_samples=1000, n_rounds=1, bootstrapped=False
     return array(buckets)
 
 
-## buckets = array(
-##     [
-##         consensus(model, dataloaders, n_samples=100, n_rounds=1, bootstrapped=False)
-##         for dataloaders in [[T_dataloader], [t_dataloader], [v_dataloader]]
-##     ]
-## )
-## print(buckets.shape)
-## 
-## # Getting TPR, TNR ish result
-## [
-##     logger.addnl(str(diag(buckets[idx, :]) / buckets[idx, :].sum(axis=0)))
-##     for idx in range(3)
-## ]
-## 
-## buckets = array(
-##     [
-##         consensus(model, dataloaders, n_samples=1000, n_rounds=1, bootstrapped=False)
-##         for dataloaders in [[T_dataloader], [t_dataloader], [v_dataloader]]
-##     ]
-## )
-## print(buckets.shape)
-## logger.addnl(str(buckets))
-## # Getting accuracies from each
-## [
-##     logger.addnl(str(diag(buckets[idx, ...]).sum() / buckets[idx, ...].sum()))
-##     for idx in range(2)
-## ]
+buckets = array(
+    [
+        consensus(model, dataloaders, n_samples=100, n_rounds=1, bootstrapped=False)
+        for dataloaders in [[T_dataloader], [t_dataloader], [v_dataloader]]
+    ]
+)
+print(buckets.shape)
+
+# Getting TPR, TNR ish result
+[
+    logger.addnl(str(diag(buckets[idx, :]) / buckets[idx, :].sum(axis=0)))
+    for idx in range(3)
+]
+
+buckets = array(
+    [
+        consensus(model, dataloaders, n_samples=1000, n_rounds=1, bootstrapped=False)
+        for dataloaders in [[T_dataloader], [t_dataloader], [v_dataloader]]
+    ]
+)
+print(buckets.shape)
+logger.addnl(str(buckets))
+# Getting accuracies from each
+[
+    logger.addnl(str(diag(buckets[idx, ...]).sum() / buckets[idx, ...].sum()))
+    for idx in range(2)
+]
 
 logger.addnl("Bootstrapped Accuracies")
 buckets = array(
     [
-        consensus(model, dataloaders, n_samples=100, n_rounds=1, bootstrapped=True)
+        consensus(model, dataloaders, n_samples=1000, n_rounds=1, bootstrapped=True)
         for dataloaders in [t_class_dataloaders, v_class_dataloaders]
     ]
 )
@@ -364,7 +343,7 @@ logger.db_add(
 logger.addnl("Bootstrapped Consensus Accuracies")
 buckets = array(
     [
-        consensus(model, dataloaders, n_samples=100, n_rounds=9, bootstrapped=True)
+        consensus(model, dataloaders, n_samples=1000, n_rounds=9, bootstrapped=True)
         for dataloaders in [t_class_dataloaders, v_class_dataloaders]
     ]
 )

@@ -1,7 +1,12 @@
 def get_datestring() -> str:
-    """# Get Datestring
+    """
+    Generates a date string in the format YYMMDD-hhmmss-us.
 
-    Format is YYMMDD-hhmmss-us
+    This function uses the current date and time, padding with zeros if necessary,
+    to create a standardized date string.
+
+    Returns:
+        str: A date string in the format YYMMDD-hhmmss-us.
     """
     from datetime import datetime
 

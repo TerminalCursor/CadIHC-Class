@@ -13,9 +13,17 @@ from typing import Self, Any, List
 
 
 class FocalLoss(nn.Module):
-    """# Focal Loss
+    """
+    Unified Focal Loss class for binary, multi-class, and multi-label classification tasks.
 
     From: https://github.com/itakurah/focal-loss-pytorch
+
+    Args:
+        gamma (float): Focusing parameter, controls the strength of the modulating factor (1 - p_t)^gamma.
+        alpha (List[Any] | Tensor | None): Balancing factor, can be a scalar or a tensor for class-wise weights. If None, no class balancing is used.
+        reduction (str): Specifies the reduction method: 'none' | 'mean' | 'sum'.
+        task_type (str): Specifies the type of task: 'binary', 'multi-class', or 'multi-label'.
+        num_classes (int | None): Number of classes (only required for multi-class classification).
     """
 
     alpha: List[Any] | Tensor | None
@@ -82,7 +90,22 @@ class FocalLoss(nn.Module):
             )
 
     def binary_focal_loss(self: Self, inputs: Tensor, targets: Tensor) -> Tensor:
-        """Focal loss for binary classification."""
+        """
+        Focal loss for binary classification.
+
+        Args:
+            inputs (Tensor): Predictions (logits) from the model.
+                             Shape:
+                               - binary/multi-label: (batch_size, num_classes)
+                               - multi-class: (batch_size, num_classes)
+            targets (Tensor): Ground truth labels.
+                             Shape:
+                              - binary: (batch_size,)
+                              - multi-label: (batch_size, num_classes)
+                              - multi-class: (batch_size,)
+        Returns:
+            Tensor: Focal Loss value
+        """
         probs = sigmoid(inputs)
         targets = targets.float()
 
@@ -109,7 +132,22 @@ class FocalLoss(nn.Module):
         return loss
 
     def multi_class_focal_loss(self: Self, inputs: Tensor, targets: Tensor) -> Tensor:
-        """Focal loss for multi-class classification."""
+        """
+        Focal loss for multi-class classification.
+
+        Args:
+            inputs (Tensor): Predictions (logits) from the model.
+                             Shape:
+                               - binary/multi-label: (batch_size, num_classes)
+                               - multi-class: (batch_size, num_classes)
+            targets (Tensor): Ground truth labels.
+                             Shape:
+                              - binary: (batch_size,)
+                              - multi-label: (batch_size, num_classes)
+                              - multi-class: (batch_size,)
+        Returns:
+            Tensor: Focal Loss value
+        """
         assert self.num_classes is not None
         if self.alpha is not None:
             assert isinstance(self.alpha, Tensor)
@@ -146,7 +184,22 @@ class FocalLoss(nn.Module):
         return loss
 
     def multi_label_focal_loss(self: Self, inputs: Tensor, targets: Tensor) -> Tensor:
-        """Focal loss for multi-label classification."""
+        """
+        Focal loss for multi-label classification.
+
+        Args:
+            inputs (Tensor): Predictions (logits) from the model.
+                             Shape:
+                               - binary/multi-label: (batch_size, num_classes)
+                               - multi-class: (batch_size, num_classes)
+            targets (Tensor): Ground truth labels.
+                             Shape:
+                              - binary: (batch_size,)
+                              - multi-label: (batch_size, num_classes)
+                              - multi-class: (batch_size,)
+        Returns:
+            Tensor: Focal Loss value
+        """
         probs = sigmoid(inputs)
 
         # Compute binary cross entropy
@@ -173,9 +226,14 @@ class FocalLoss(nn.Module):
 
 
 def get_loss(config: CompleteConfig) -> Maybe[LossT]:
-    """# Returns the loss function corresponding to the name
+    """
+    Returns the loss function corresponding to the name.
 
-    Backend-specific function
+    Args:
+        config (CompleteConfig): Configuration object containing the loss function type.
+
+    Returns:
+        Maybe[LossT]: The loss function or an empty Maybe if the type is not recognized.
     """
     name = config.loss_fn
     if name == "mse_loss":

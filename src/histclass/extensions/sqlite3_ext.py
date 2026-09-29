@@ -1,12 +1,9 @@
 # Sqlite3 Loading Extensions
 from .pandas_ext import *
 from ..interfaces.data.types import DataTypes
+from ..typecheck import *
 from typing import List, Tuple
-
-
-def wash2strlist(x: Any) -> List[str]:
-    """# Wash to String List for Type Checking"""
-    return x
+from pandas import DataFrame, Series  # pyright: ignore[reportMissingTypeStubs]
 
 
 def legacy_enumerate_model(

@@ -8,14 +8,21 @@ from typing import Self, Tuple, List, Any
 from torch.nn import Module
 from torch import Tensor
 from torch.nn.functional import elu
-from torch.utils.data import DataLoader
 from torch import float32
 from torch import dtype as _DTYPE
 from numpy.typing import NDArray
 
 
 def accuracy_from_matrix(matrix: Tensor) -> float:
-    """# Get Accuracy From Matrix"""
+    """
+    Compute the accuracy from a matrix.
+
+    Args:
+        matrix (Tensor): A square tensor representing the confusion matrix.
+
+    Returns:
+        float: The accuracy value.
+    """
     from torch import eye
 
     correct = (matrix * eye(matrix.shape[0])).sum().item()
@@ -38,45 +45,94 @@ class PyTorchModel(Model):
 
     classic_data_norm: bool = False
     confidences: List[float] | None = None
+    accuracy: float | None = None
 
     def __init__(
         self: Self,
         configuration: CompleteConfig,
         activation: LossT = elu,
     ):
-        """# Model Initialization"""
+        """
+        Initialize the model.
+
+        Args:
+            configuration (CompleteConfig): The model configuration.
+            activation (LossT, optional): The loss function activation. Defaults to elu.
+        """
         raise NotImplementedError("Implement me in subclasses!")
 
     def set_optimizer(self: Self, optimizer: OptimizerT) -> Self:
-        """# Optimizer for Model Training"""
+        """
+        Set the optimizer for the model.
+
+        Args:
+            optimizer (OptimizerT): The optimizer to use.
+
+        Returns:
+            Self
+        """
         self.optimizer = optimizer
         return self
 
     def set_loss_fn(self: Self, loss_fn: LossT) -> Self:
-        """# Loss Function for Model Training"""
+        """
+        Set the loss function for the model.
+
+        Args:
+            loss_fn (LossT): The loss function to use.
+
+        Returns:
+            Self
+        """
         self.loss_fn = loss_fn
         return self
 
     def set_device(self: Self, device: Any | None) -> Self:
-        """# Device to put Model On"""
+        """
+        Set the device to put the model on.
+
+        Args:
+            device (Any | None): The device to use. Defaults to None.
+
+        Returns:
+            Self
+        """
         if device is not None:
             self.device = device
         self.model = self.model.to(self.device)
         return self
 
     def set_dtype(self: Self, dtype: Any | None) -> Self:
-        """# Dtype for Model to use"""
+        """
+        Set the data type for the model.
+
+        Args:
+            dtype (Any | None): The data type to use. Defaults to None.
+
+        Returns:
+            Self
+        """
         if dtype is not None:
             self.dtype = dtype
         self.model = self.model.to(self.dtype)
         return self
 
-    def train_batch(
+    def train_epoch(
         self: Self,
         dataloader: DataloaderT,
         loss_fn: LossT,
     ) -> Tuple[float, float, NDArray[Any]]:
-        """# Procedure to Train on Batch"""
+        """
+        Train the model on a batch.
+
+        Args:
+            dataloader (DataloaderT): The data loader to use.
+            loss_fn (LossT): The loss function to use.
+
+        Returns:
+            Tuple[float, float, NDArray[Any]]: A tuple containing the total loss, accuracy,
+                and the confusion matrix.
+        """
         from torch import zeros, int32
         from torch.nn.functional import softmax
 
@@ -104,12 +160,22 @@ class PyTorchModel(Model):
         acc_matrix = acc_matrix.detach().cpu().numpy()
         return total_loss / n_loss, acc, acc_matrix
 
-    def eval_batch(
+    def eval_epoch(
         self: Self,
-        dataloader: DataLoader[Tuple[Tensor, Tensor]],
+        dataloader: DataloaderT,
         loss_fn: LossT,
     ) -> Tuple[float, float, NDArray[Any]]:
-        """# Procedure to Evaluate on Batch"""
+        """
+        Evaluate the model on a batch.
+
+        Args:
+            dataloader (DataloaderT): The data loader to use.
+            loss_fn (LossT): The loss function to use.
+
+        Returns:
+            Tuple[float, float, NDArray[Any]]: A tuple containing the total loss, accuracy,
+                and the confusion matrix.
+        """
         from torch import no_grad, zeros, int32
         from torch.nn.functional import softmax
 
@@ -136,13 +202,30 @@ class PyTorchModel(Model):
         return total_loss / n_loss, acc, acc_matrix
 
     def to(self: Self, device: Any | None = None, dtype: Any | None = None) -> Self:
-        """# Move Model to Device"""
+        """
+        Move the model to a specific device.
+
+        Args:
+            device (Any | None): The device to move to. Defaults to None.
+            dtype (Any | None): The data type to use. Defaults to None.
+
+        Returns:
+            Self
+        """
         self.set_device(device)
         self.set_dtype(dtype)
         return self
 
     def load(self: Self, checkpoint_path: str) -> Self:
-        """# Load Model from Checkpoint"""
+        """
+        Load a model from a checkpoint file.
+
+        Args:
+            checkpoint_path (str): The path to the checkpoint file.
+
+        Returns:
+            Self
+        """
         from torch import load
 
         checkpoint = load(checkpoint_path)
@@ -150,8 +233,42 @@ class PyTorchModel(Model):
         return self
 
     def save(self: Self, checkpoint_path: str) -> Self:
-        """# Save Model to Checkpoint"""
+        """
+        Save a model to a checkpoint file.
+
+        Args:
+            checkpoint_path (str): The path to the checkpoint file.
+
+        Returns:
+            Self
+        """
         from torch import save
 
         save(self.model.state_dict(), checkpoint_path)
         return self
+
+    def embed(self: Self, x: Any, **kwargs: Any) -> Any:
+        """
+        Embed data from a model
+
+        Args:
+            x: Input
+            kwargs: Embedding Arguments
+
+        Returns:
+            Data
+        """
+        return None
+
+    def visualize(self: Self, x: Any, **kwargs: Any) -> Any:
+        """
+        Visualize a model
+
+        Args:
+            x: Input
+            kwargs: Visualization Arguments
+
+        Returns:
+            Data
+        """
+        return None

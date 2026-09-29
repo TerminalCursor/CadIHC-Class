@@ -3,14 +3,37 @@ from paramiko import SSHClient, AutoAddPolicy
 from tqdm.auto import tqdm
 
 
-def progress_bar(pbar: Any, transfer: int, toTransfer: int) -> None:
-    """# Progress bar for transfers"""
-    d = transfer / toTransfer * 100
-    pbar.update(d - pbar.n)
+def progress_bar(bar_class: Any, transfer: int, toTransfer: int) -> None:
+    """
+    Updates the progress bar by the percentage of transfer done.
+
+    Args:
+        bar_class (Any): The progress bar object.
+        transfer (int): The number of bytes transferred so far.
+        toTransfer (int): The total number of bytes to be transferred.
+
+    Returns:
+        None
+    """
+    transferred_p = transfer / toTransfer * 100
+    bar_class.update(transferred_p - bar_class.n)
 
 
 class RemoteFile:
-    """# Class to pull remote files"""
+    """
+    A class to pull remote files from a server using SSH.
+
+    Attributes:
+        remote_filename (str): The filename of the remote file.
+        local_filename (str): The local filename where the file will be saved.
+        hostname (str): The hostname or IP address of the server.
+        username (str | None): The username to use for authentication.
+        key_filename (str | None): The path to the SSH private key.
+
+    Methods:
+        download(): Attempts to download a remote resource.
+        upload(): Attempts to upload a local resource.
+    """
 
     remote_filename: str
     local_filename: str
@@ -27,6 +50,19 @@ class RemoteFile:
         username: str | None = None,
         key_filename: str | None = None,
     ):
+        """
+        Initializes the RemoteFile object.
+
+        Args:
+            remote_filename (str): The filename of the remote file.
+            hostname (str): The hostname or IP address of the server.
+            local_filename (str): The local filename where the file will be saved.
+            username (str | None, optional): The username to use for authentication. Defaults to None.
+            key_filename (str | None, optional): The path to the SSH private key. Defaults to None.
+
+        Returns:
+            None
+        """
         self.remote_filename = remote_filename
         self.local_filename = local_filename
         self.hostname = hostname
@@ -34,8 +70,12 @@ class RemoteFile:
         self.key_filename = key_filename
 
     def download(self: Self) -> bool:
-        """# Attempt to download remote resource"""
+        """
+        Attempts to download a remote resource.
 
+        Returns:
+            bool: True if the download is successful, False otherwise.
+        """
         success = False
         try:
             ssh = SSHClient()
@@ -64,8 +104,12 @@ class RemoteFile:
         return success
 
     def upload(self: Self) -> bool:
-        """# Attempt to upload remote resource"""
+        """
+        Attempts to upload a local resource.
 
+        Returns:
+            bool: True if the upload is successful, False otherwise.
+        """
         success = False
         try:
             ssh = SSHClient()

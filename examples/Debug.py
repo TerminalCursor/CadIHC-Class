@@ -55,21 +55,21 @@ MODEL_TYPES = [
     # ModelType.Recurrent,
 ]
 DATA_TYPES = [
-    DataTypes.ImageViT,
     DataTypes.ImageCNN,
-    DataTypes.Morphology,
-    DataTypes.Morphology | DataTypes.Nuclei,
-    DataTypes.Morphology | DataTypes.Energetics,
-    DataTypes.Latent,
-    DataTypes.Nuclei,
-    DataTypes.Energetics,
+    #DataTypes.Morphology | DataTypes.Nuclei,
+    #DataTypes.Morphology | DataTypes.Energetics,
+    #DataTypes.Morphology,
+    #DataTypes.Latent,
+    #DataTypes.Nuclei,
+    #DataTypes.Energetics,
+    #DataTypes.ImageViT,
 ]
 CATEGORY_TYPES = [
-    CategoryType.BinaryStage,
-    CategoryType.BinaryGrade,
     CategoryType.TripleNegative,
     #CategoryType.BasicStage,
     #CategoryType.Grade,
+    CategoryType.BinaryStage,
+    CategoryType.BinaryGrade,
 ]
 PATCHES = [128, 256, 512]
 
@@ -98,11 +98,11 @@ else:
 _, MODEL_TYPE, DN_IDX, CATEGORY_TYPE = training_combinations[0]
 DATA_TYPE = D_COMBOS[0][DN_IDX]
 PATCH = D_COMBOS[1][DN_IDX]
-REMOVE_COLUMNS = D_COMBOS[2][DN_IDX]
-
-num_columns = DATA_TYPE.dimensionality()
-for v in REMOVE_COLUMNS:
-    assert v < num_columns, "Column does not exist"
+#REMOVE_COLUMNS = D_COMBOS[2][DN_IDX]
+#
+#num_columns = DATA_TYPE.dimensionality()
+#for v in REMOVE_COLUMNS:
+#    assert v < num_columns, "Column does not exist"
 
 from histclass.tools.configuration import load_config
 from histclass.tools.training.lib import early_exit_detector
@@ -114,7 +114,7 @@ from histclass.backends.pytorch.data.dataset import load_data
 from tqdm.auto import tqdm
 from numpy import array
 
-logger = Logger(LOG_LOCATION)
+#logger = Logger(LOG_LOCATION)
 
 # Configuration
 config = load_config(DATA_TYPE, CATEGORY_TYPE, MODEL_TYPE, patches=PATCH)
@@ -123,33 +123,35 @@ config = load_config(DATA_TYPE, CATEGORY_TYPE, MODEL_TYPE, patches=PATCH)
 config.loss_fn = "focal_loss"
 config.optimizer = "AdamW"
 config.batch_size = 32
-config.epochs = 50_000
-#config.learning_rate = 5e-6
 config.learning_rate = 1e-5
-config.early_exit_config.kwargs["lookback"] = 100_000
+config.epochs = 30_000
+config.early_exit_config.kwargs["lookback"] = 3_000
 if config.pointcloud_config is not None:
     config.pointcloud_config.n_blocks = 2
+if config.image_values is not None:
+    config.image_values.window_width /= 2
+    config.image_values.window_width = int(config.image_values.window_width)
+    config.image_values.window_height /= 2
+    config.image_values.window_height = int(config.image_values.window_height)
 loss_fn = get_loss(config).unwrap()
 optim = get_optimizer(config).unwrap()
 
 # Record Configuration Used
-logger.addnl(config.to_dict())
-logger.db_add(
-    name=config.model_name,
-    category=config.output_data_type.to_str(),
-    learning_rate=config.learning_rate,
-    loss=config.loss_fn,
-)
+#logger.addnl(config.to_dict())
+#logger.db_add(
+#    name=config.model_name,
+#    category=config.output_data_type.to_str(),
+#    learning_rate=config.learning_rate,
+#    loss=config.loss_fn,
+#)
 
 # Load Data
 ## Get Data Sources
-breakpoint()
 dataset = load_data(config)
-breakpoint()
-assert False
 
 # Load Model
 model = get_model(config).to("cuda")
+breakpoint()
 model.set_optimizer(optim)
 model.optimizer = model.optimizer(model.model.parameters(), lr=config.learning_rate)
 print(model.model)
@@ -167,6 +169,7 @@ epoch_metrics = ([], [], [], [])
 # Pretraining statistics
 epoch = 0
 t_loss, t_acc, t_mat = model.eval_epoch(t_dataloader, loss_fn)
+breakpoint()
 v_loss, v_acc, v_mat = model.eval_epoch(v_dataloader, loss_fn)
 epoch_metrics[0].append(epoch)
 epoch_metrics[1].append((t_loss, v_loss))
@@ -174,22 +177,18 @@ epoch_metrics[2].append((t_acc, v_acc))
 epoch_metrics[3].append((t_mat, v_mat))
 
 early_exit_detections = 0
-logger.echo_stdout = False
-dataloaderss = [*t_class_dataloaders, t_dataloader]
+#logger.echo_stdout = False
 for epoch in tqdm(range(config.epochs)):
     t_loss, t_acc, t_mat = model.train_epoch(t_dataloader, loss_fn)
-    idx = int(epoch / 1_000)
-    idx = idx % len(dataloaderss)
-    #t_loss, t_acc, t_mat = model.train_epoch(dataloaderss[idx], loss_fn)
     v_loss, v_acc, v_mat = model.eval_epoch(v_dataloader, loss_fn)
     epoch_metrics[0].append(epoch + 1)
     epoch_metrics[1].append((t_loss, v_loss))
     epoch_metrics[2].append((t_acc, v_acc))
     epoch_metrics[3].append((t_mat, v_mat))
 
-    logger.addnl(
-        f"{epoch_metrics[0][-1]:>5}: {t_loss:7.4f} {v_loss:7.4f}  {t_acc*100:6.2f} {v_acc*100:6.2f}"
-    )
+    #logger.addnl(
+    #    f"{epoch_metrics[0][-1]:>5}: {t_loss:7.4f} {v_loss:7.4f}  {t_acc*100:6.2f} {v_acc*100:6.2f}"
+    #)
 
     eed, slope = early_exit_detector(
         epoch_metrics[1], **config.early_exit_config.kwargs  # pyright: ignore
@@ -200,18 +199,20 @@ for epoch in tqdm(range(config.epochs)):
         early_exit_detections = 0
     if early_exit_detections > config.early_exit_config.max_failures:
         break
-logger.echo_stdout = True
+breakpoint()
+assert False
+#logger.echo_stdout = True
 
 epochs = epoch_metrics[0]
 t_losses, v_losses = zip(*epoch_metrics[1])
 plt.clf()
+plt.plot(epochs, t_losses)
 plt.plot(epochs, v_losses)
-plt.plot(epochs, t_losses, alpha=0.5)
 plt.savefig("outputs/losses.png")
 t_losses, v_losses = zip(*epoch_metrics[2])
 plt.clf()
+plt.plot(epochs, t_losses)
 plt.plot(epochs, v_losses)
-plt.plot(epochs, t_losses, alpha=0.5)
 plt.savefig("outputs/accuracies.png")
 
 # Posttraining Metrics

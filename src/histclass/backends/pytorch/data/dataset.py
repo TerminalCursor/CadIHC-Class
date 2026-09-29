@@ -12,12 +12,15 @@ from torch import Tensor
 
 
 class PointcloudDataframe(DatasetT, TorchDataframe):
-    """# Dataframe for Pointclouds
-    Implements my interface and the Pytorch Dataset Interface
+    """
+    # Dataframe for Pointclouds
 
-    min_seq_length: What the smallest possible sentence should be
-    seq_len: What the size of the sentence should be
-    mask_p: Probability to mask some of the sentence
+    Implements my interface and the Pytorch Dataset Interface.
+
+    Parameters:
+        min_seq_length (int): The smallest possible sequence length.
+        seq_len (int): The size of the sequence.
+        mask_p (float): Probability to mask some of the sequence.
     """
 
     min_seq_length: int = 10
@@ -25,16 +28,26 @@ class PointcloudDataframe(DatasetT, TorchDataframe):
     mask_p: float = 0.2
 
     def to(self: Self, *args: Any) -> Self:
-        """# Move dataset to device and dtype"""
+        """
+        Move dataset to device and dtype.
+
+        Args:
+            *args (Any): Device and dtype to move the data to.
+        Returns:
+            Self: The dataframe with the data moved.
+        """
         self.data = self.data.to(*args)
         self.labels = self.labels.to(*args)
         return self
 
     def __getitem__(self: Self, idx: int) -> DataT:
-        """# Get Item
+        """
+        Get item from index.
 
-        Get Data and Label from Index
-        Generates a sentence on the fly
+        Args:
+            idx (int): The index of the item.
+        Returns:
+            DataT: The item at the specified index.
         """
         from torch import zeros, randint, rand, randperm
 
@@ -53,15 +66,24 @@ class PointcloudDataframe(DatasetT, TorchDataframe):
         return output_data, self.labels, self.name
 
     def __len__(self: Self) -> int:
-        """# Length = 1"""
+        """
+        Get the length of the dataframe.
+
+        Returns:
+            int: The length of the dataframe.
+        """
         return 1
 
 
 class ImageDataframe(DatasetT, TorchDataframe):
-    """# Dataframe for Images
-    Implements my interface and the Pytorch Dataset Interface
+    """
+    # Dataframe for Images
 
-    width/ height: Image dimensions
+    Implements my interface and the Pytorch Dataset Interface.
+
+    Parameters:
+        height (int): The height of the image.
+        width (int): The width of the image.
     """
 
     height: int = 2560
@@ -77,9 +99,20 @@ class ImageDataframe(DatasetT, TorchDataframe):
         labels: Any = None,
         usage: DataframeType = DataframeType.Unknown,
     ):
-        """# Image Dataset Initialization
+        """
+        Initialize the dataframe.
 
-        Also automatically records image dimensions
+        Args:
+            source (str): The source of the image.
+            input_dtypes (DataTypes): The types of the input data.
+            output_dtype (CategoryType): The type of the output label.
+            name (str): The name of the dataframe.
+            data (Any): The data to be used for the dataframe.
+            labels (Any): The labels to be used for the dataframe.
+            usage (DataframeType): The usage of the dataframe.
+
+        Returns:
+            None
         """
         super(TorchDataframe, self).__init__(
             source, input_dtypes, output_dtype, name, data, labels, usage
@@ -88,46 +121,75 @@ class ImageDataframe(DatasetT, TorchDataframe):
         self.height = self.data.shape[2]
 
     def to(self: Self, *args: Any) -> Self:
-        """# Move dataset to device and dtype"""
+        """
+        Move dataset to device and dtype.
+
+        Args:
+            *args (Any): Device and dtype to move the data to.
+        Returns:
+            Self: The dataframe with the data moved.
+        """
         self.data = self.data.to(*args)
         self.labels = self.labels.to(*args)
         return self
 
     def __getitem__(self: Self, idx: int) -> DataT:
-        """# Get Item
+        """
+        Get item from index.
 
-        Get Data and Label from Index
-        Generates a sentence on the fly
+        Args:
+            idx (int): The index of the item.
+        Returns:
+            DataT: The item at the specified index.
         """
         from torch.nn.functional import pad
+        from torch import randint
 
-        self.data = pad(
-            self.data,
+        x_s = 0
+        y_s = 0
+        if self.data.shape[1] > self.width:
+            x_s = randint(self.data.shape[1] - self.width, (1,)).item()
+        if self.data.shape[2] > self.height:
+            y_s = randint(self.data.shape[2] - self.height, (1,)).item()
+
+        data = self.data
+        data = data[:, x_s : x_s + self.width, y_s : y_s + self.height]
+        data = pad(
+            data,
             (
                 0,
-                self.height - self.data.shape[2],
+                self.height - data.shape[2],
                 0,
-                self.width - self.data.shape[1],
+                self.width - data.shape[1],
                 0,
                 0,
             ),
         )
-        return self.data, self.labels, self.name
+        return data, self.labels, self.name
 
     def __len__(self: Self) -> int:
-        """# Length = 1"""
+        """
+        Get the length of the dataframe.
+
+        Returns:
+            int: The length of the dataframe.
+        """
         return 1
 
 
 class TorchDataset(DatasetInterface):
-    """# Dataset
+    """
+    # Dataset
 
     Contains:
-    data_types: DataType of the samples
-    category_type: Category Type of the samples
+    data_types (DataTypes): The types of the data.
+    category_type (CategoryType): The type of the labels.
+    data_frames (List[DatasetT]): A list of dataframes loaded from sources.
 
-    data_frames: List of Dataframes loaded from `sources`
-    Any incomplete source is excluded
+    Parameters:
+        sources (List[str]): A list of sources to load data from.
+        configuration (CompleteConfig): The configuration for the dataset.
+        classic_norm (bool): Whether to use classic normalization.
     """
 
     def __init__(
@@ -136,7 +198,17 @@ class TorchDataset(DatasetInterface):
         configuration: CompleteConfig,
         classic_norm: bool = False,
     ):
-        """# Get Data from Sources"""
+        """
+        Initialize the dataset.
+
+        Args:
+            sources (List[str]): A list of sources to load data from.
+            configuration (CompleteConfig): The configuration for the dataset.
+            classic_norm (bool): Whether to use classic normalization.
+
+        Returns:
+            None
+        """
         super().__init__(sources, configuration)
         DataframeInit = (
             ImageDataframe
@@ -185,7 +257,12 @@ class TorchDataset(DatasetInterface):
             self.data_frames.append(data_frame)
 
     def get_dataloaders(self: Self) -> List[DataloaderT | List[DataloaderT]]:
-        """# Get Dataloaders"""
+        """
+        Get dataloaders.
+
+        Returns:
+            List[DataloaderT | List[DataloaderT]]: A list of dataloaders.
+        """
         from torch import stack, bincount, double
         from torch.utils.data import WeightedRandomSampler, ConcatDataset
 
@@ -194,7 +271,16 @@ class TorchDataset(DatasetInterface):
         def get_dataloader(
             usage: DataframeType | None = None, label: int | None = None
         ) -> Maybe[DataloaderT]:
-            """# Get Dataloader for Usage"""
+            """
+            Get dataloader for usage.
+
+            Args:
+                usage (DataframeType | None): The usage of the data.
+                label (int | None): The label of the data.
+
+            Returns:
+                Maybe[DataloaderT]: A maybe dataloader.
+            """
             dataset = self.data_frames
             if usage is not None:
                 dataset = [
@@ -253,7 +339,8 @@ class TorchDataset(DatasetInterface):
 def load_data(
     configuration: CompleteConfig, local_base: str = "./", classic_norm: bool = False
 ):
-    """# Get Data from Sources
+    """
+    Load data.
 
     Assumed schema:
     ihc/data/classification/
@@ -264,6 +351,14 @@ def load_data(
             MetricsAndLatent.csv -- Morphology Data
             CNJoinedMetrics.csv  -- Morphology and Nuclei Data
             Energetics.npy       -- Energetics Data
+
+    Args:
+        sources (List[str]): A list of sources to load data from.
+        configuration (CompleteConfig): The configuration for the dataset.
+        classic_norm (bool): Whether to use classic normalization.
+
+    Returns:
+        TorchDataset: The loaded dataset.
     """
     from ....extensions.glob_ext import globs
 
@@ -273,8 +368,16 @@ def load_data(
 
 
 def load_data_from_model(model: PyTorchModel, local_base: str = "./") -> TorchDataset:
-    """# Load Data
-    That is associated with a given model
+    """
+    Load data associated to model.
+    I.e. a nuclei model will automatically pull nuclei data.
+
+    Args:
+        model (PyTorchModel): The model to load data from.
+        local_base (str): The base directory for the data.
+
+    Returns:
+        TorchDataset: The loaded dataset.
     """
     from ..models.vit import ViTModel
     from ....tools.configuration import load_config

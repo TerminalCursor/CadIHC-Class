@@ -14,8 +14,21 @@ from typing import Dict
 def get_model(
     configuration: CompleteConfig, activation: ActivationT = elu
 ) -> PyTorchModel:
-    """# Get a model"""
+    """
+    Returns a PyTorch model based on the provided configuration.
+
+    Args:
+        configuration (CompleteConfig): The configuration for the model.
+        activation (ActivationT, optional): The activation function. Defaults to elu.
+
+    Returns:
+        PyTorchModel: The selected model instance.
+    """
     assert configuration.input_data_types.is_valid()
+    from torch.cuda import is_available
+
+    if not is_available:  # pyright: ignore
+        configuration.device = "cpu"
     device = configuration.device
     if configuration.input_data_types == DataTypes.ImageCNN:
         return CnnModel(configuration, activation).to(device)
@@ -32,7 +45,21 @@ def load_model(
     checkpoint_path: str,
     activation: ActivationT = elu,
 ) -> PyTorchModel:
-    """# Load a Model"""
+    """
+    Loads a PyTorch model from a checkpoint path.
+
+    Args:
+        configuration (CompleteConfig): The configuration for the model.
+        checkpoint_path (str): The path to the checkpoint file.
+        activation (ActivationT, optional): The activation function. Defaults to elu.
+
+    Returns:
+        PyTorchModel: The loaded model instance.
+    """
+    from torch.cuda import is_available
+
+    if not is_available:  # pyright: ignore
+        configuration.device = "cpu"
     device = configuration.device
     model = get_model(configuration, activation)
     return model.load(checkpoint_path).to(device)
@@ -44,30 +71,41 @@ def download_model(
     local_base: str = "./",
     remote_base: str = "./",
     use_cached: bool = True,
+    metadata_only: bool = False,
 ) -> PyTorchModel:
-    """# Download a model from repository
+    """
+    Downloads a PyTorch model from a repository.
 
     Assumed schema:
-    ihc/models/classification/
-          name.id/
-            metadata.json
-              data_type: DataTypes as a value,
-              data_type_s: DataTypes as a string,
-              category_type: CategoryType as a value,
-              category_type_s: CategoryType as a string,
-              (Optional values)
-              optimizer: String of optimizer used
-              loss_fn: String of loss function
-              lr: Float of learning rate
-              batch_size: Integer of batch_size used
-              epochs: Integer of epochs trained for
-            checkpoint.pth
-              Checkpoint file
+        ihc/models/classification/
+            name.id/
+                metadata.json
+                    data_type: DataTypes as a value,
+                    data_type_s: DataTypes as a string,
+                    category_type: CategoryType as a value,
+                    category_type_s: CategoryType as a string,
+                    (Optional values)
+                    optimizer: String of optimizer used
+                    loss_fn: String of loss function
+                    lr: Float of learning rate
+                    batch_size: Integer of batch_size used
+                    epochs: Integer of epochs trained for
 
     Environment variables required:
      - REMOTE_HOSTNAME
      - REMOTE_UNAME
      - REMOTE_KEY_FILE
+
+    Args:
+        name (str): The model name.
+        model_id (str | None, optional): The model ID. Defaults to None.
+        local_base (str, optional): The local base directory. Defaults to "./".
+        remote_base (str, optional): The remote base directory. Defaults to "./".
+        use_cached (bool, optional): Whether to use the cached version. Defaults to True.
+        metadata_only (bool, optional): Whether to only load the metadata and not the weights
+
+    Returns:
+        PyTorchModel: The downloaded model instance.
     """
     from ....tools.env import get_env
     from ....interfaces.remote_file import RemoteFile
@@ -110,6 +148,7 @@ def download_model(
     classic_norm = False
     model_kwargs = {}
     confidences = None
+    accuracy = None
     with open(local_path + "metadata.json", "r") as fhandle:
         from json import load
 
@@ -124,6 +163,8 @@ def download_model(
             model_kwargs["vit"] = {"image_size": data["patches"]}
         if "confidences" in data.keys():
             confidences = data["confidences"]
+        if "consensus" in data.keys():
+            accuracy = data["consensus"]
         model_type = ModelType(data["model_type"])
         data_type = DataTypes(data["data_type"])
         category_type = CategoryType(data["category_type"])
@@ -133,9 +174,14 @@ def download_model(
         data_type, category_type, model_type, **model_kwargs  # pyright: ignore
     )
 
-    model = load_model(config, local_path + "checkpoint.pth")
+    if metadata_only:
+        # Don't do the heavy work of loading weights
+        model = get_model(config)
+    else:
+        model = load_model(config, local_path + "checkpoint.pth")
     model.classic_data_norm = classic_norm
     model.confidences = confidences
+    model.accuracy = accuracy
     assert isinstance(model, PyTorchModel)
     return model
 
@@ -153,31 +199,46 @@ def upload_model(
     remote_base: str = "./",
     to_remote: bool = True,
 ):
-    """# Upload Model to Model Repository
+    """
+    Uploads a PyTorch model to the repository.
 
     Assumed schema:
-    ihc/models/classification/
-          name.id/
-            metadata.json
-              model_type: ModelType as a value,
-              model_type_s: ModelType as a string,
-              data_type: DataTypes as a value,
-              data_type_s: DataTypes as a string,
-              category_type: CategoryType as a value,
-              category_type_s: CategoryType as a string,
-              (Optional values)
-              optimizer: String of optimizer used
-              loss_fn: String of loss function
-              lr: Float of learning rate
-              batch_size: Integer of batch_size used
-              epochs: Integer of epochs trained for
-            checkpoint.pth
-              Checkpoint file
+        ihc/models/classification/
+            name.id/
+                metadata.json
+                    model_type: ModelType as a value,
+                    model_type_s: ModelType as a string,
+                    data_type: DataTypes as a value,
+                    data_type_s: DataTypes as a string,
+                    category_type: CategoryType as a value,
+                    category_type_s: CategoryType as a string,
+                    (Optional values)
+                    optimizer: String of optimizer used
+                    loss_fn: String of loss function
+                    lr: Float of learning rate
+                    batch_size: Integer of batch_size used
+                    epochs: Integer of epochs trained for
 
     Environment variables required:
      - REMOTE_HOSTNAME
      - REMOTE_UNAME
      - REMOTE_KEY_FILE
+
+    Args:
+        model (PyTorchModel): The model instance.
+        name (str): The model name.
+        optimizer (str | None, optional): The optimizer. Defaults to None.
+        loss_fn (str | None, optional): The loss function. Defaults to None.
+        lr (float | None, optional): The learning rate. Defaults to None.
+        batch_size (int | None, optional): The batch size. Defaults to None.
+        epochs (int | None, optional): The number of epochs. Defaults to None.
+        rest (Dict[str, str | int | float] | None, optional): Additional metadata. Defaults to None.
+        local_base (str, optional): The local base directory. Defaults to "./".
+        remote_base (str, optional): The remote base directory. Defaults to "./".
+        to_remote (bool, optional): Whether to upload the model to the repository. Defaults to True.
+
+    Returns:
+        PyTorchModel: The uploaded model instance.
     """
     from ....tools.env import get_env
     from ....interfaces.remote_file import RemoteFile

@@ -4,12 +4,17 @@ from torch import Tensor
 
 
 class TorchDataframe(Dataframe):
-    """# Dataframe
+    """
+    A PyTorch data structure representing a dataset.
 
-    Contains:
-    data: Tensor of [N, *Dd]
-    label: Tensor of [N, Dl]
-    usage: DataframeType to determine if it should be a train, val, or test set
+    Attributes:
+        data_types (DataTypes): The type of data in the dataframe.
+        category_type (CategoryType): The type of categorical values in the dataframe.
+        source (str): The source of the dataset.
+        name (str): The name of the dataset.
+        data (Tensor): The tensor representing the input data.
+        labels (Tensor): The tensor representing the target labels.
+        usage (DataframeType): The type of dataset, e.g., train, val, test.
     """
 
     data_types: DataTypes
