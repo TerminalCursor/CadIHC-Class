@@ -2,7 +2,7 @@
 channels = ["pytorch", "nvidia", "conda-forge"]
 channel-priority = "disabled"
 description = "Add a short description here"
-name = "HistClass"
+name = "GeneralPyTorch"
 platforms = ["linux-aarch64", "linux-64", "osx-64"]
 version = "0.1.0"
 
@@ -11,71 +11,31 @@ version = "0.1.0"
 [system-requirements]
 cuda = "12.5"
 
+[dependencies]
+python = "*"
+pip = "*"
+numpy = ">=2.4.2,<3"
+matplotlib = ">=3.10.8,<4"
+scipy = ">=1.17.0,<2"
+pandas = ">=3.0.0,<4"
+tqdm = ">=4.67.3,<5"
+pyright = ">=1.1.408,<2"
+scikit-learn = ">=1.8.0,<2"
+python-graphviz = ">=0.21,<0.22"
+black = ">=26.1.0,<27"
+ipykernel = "*"
+ipywidgets = "*"
+
+[pypi-dependencies]
+
 [environments]
 training = ["training"]
-armt = ["armt"]
-
-[feature.armt.dependencies]
-python = ">=3.13,<3.14"
-pip = "*"
-pytorch = ">=2.10.0,<3"
-torchvision = ">=0.25.0,<0.26"
-numpy = ">=2.4.2,<3"
-matplotlib = ">=3.10.8,<4"
-scipy = ">=1.17.0,<2"
-pandas = ">=3.0.0,<4"
-tqdm = ">=4.67.3,<5"
-pyright = ">=1.1.408,<2"
-scikit-learn = ">=1.8.0,<2"
-python-graphviz = ">=0.21,<0.22"
-black = ">=26.1.0,<27"
-ipykernel = "*"
-ipywidgets = "*"
-pytest = ">=9.0.2,<10"
-ipython = ">=9.10.0,<10"
-pandera = ">=0.29.0,<0.30"
-paramiko = ">=4.0.0,<5"
-python-dotenv = ">=1.2.1,<2"
-
-[feature.armt.pypi-dependencies]
-histclass = { path =  '.', editable = true }
-opencv-python = ">=4.11.0.86, <5"
-
-[feature.armt.tasks]
-model_train = {cmd = "python3 examples/TrainModel.py"}
-model_pctrain = {cmd = "python3 examples/TrainPCModel.py"}
 
 [feature.training.dependencies]
-python = ">=3.13,<3.14"
-pip = "*"
 pytorch = ">=2.10.0,<3"
 torchvision = ">=0.25.0,<0.26"
-numpy = ">=2.4.2,<3"
-matplotlib = ">=3.10.8,<4"
-scipy = ">=1.17.0,<2"
-pandas = ">=3.0.0,<4"
-tqdm = ">=4.67.3,<5"
-pyright = ">=1.1.408,<2"
-scikit-learn = ">=1.8.0,<2"
-python-graphviz = ">=0.21,<0.22"
-black = ">=26.1.0,<27"
-ipykernel = "*"
-ipywidgets = "*"
-pytest = ">=9.0.2,<10"
-ipython = ">=9.10.0,<10"
-pandera = ">=0.29.0,<0.30"
-paramiko = ">=4.0.0,<5"
-python-dotenv = ">=1.2.1,<2"
-
-[feature.training.pypi-dependencies]
-histclass = { path =  '.', editable = true }
-opencv-python = ">=4.11.0.86, <5"
 
 [feature.training.tasks]
-#classifier = {cmd = "python3 examples/Run.py"}
-classifier = {cmd = "python3 examples/TrainModel.py"}
-train = {cmd = "python3 examples/TrainModel.py"}
-roc = {cmd = "python3 examples/BoxBest.py"}
-test = {cmd = "pytest"}
-typing = {cmd = "pyright -p strict.json"}
-format = {cmd = "black src tests"}
+classifier = {cmd = "python3 Run.py"}
+#roc = {cmd = "python3 LoadBest.py"}
+roc = {cmd = "python3 BoxBest.py"}
