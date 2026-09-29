@@ -1,0 +1,26 @@
+[project]
+authors = [{name = "cc", email = "cc@localhost"}]
+dependencies = []
+name = "HistClass"
+requires-python = ">= 3.11"
+version = "0.1.0"
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-aarch64", "osx-64", "linux-64"]
+
+[tool.pixi.pypi-dependencies]
+histclass = { path = ".", editable = true }
+
+[tool.pixi.tasks]
+
+[tool.pytest]
+minversion = "9.0"
+addopts = ["-ra", "-q"]
+testpaths = [
+  "tests",
+]

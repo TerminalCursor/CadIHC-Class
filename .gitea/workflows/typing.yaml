@@ -1,0 +1,18 @@
+name: Gitea Type Tests
+run-name: 🖍️ Verifying Types
+on:
+  push:
+    branches:
+      - master
+      - tests
+
+jobs:
+  Explore-Gitea-Actions:
+    runs-on: ubuntu-base
+    container:
+      image: custom-runner:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run pixi task
+        run: |
+          CONDA_OVERRIDE_CUDA="12.5" pixi run typing

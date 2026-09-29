@@ -29,9 +29,10 @@ def early_exit_detector(
 
 def rescale(x, m, s):
     from numpy import array
+
     m = array(m)
     s = array(s)
-    return (x-m)/s
+    return (x - m) / s
 
 
 def load_raw_data(
@@ -44,18 +45,64 @@ def load_raw_data(
     include_nuclei=False,
     include_nuclei_only=False,
     include_random=[False, 0, 0],
-    new_scale=False,
 ):
     import json
     from numpy import array, hstack
 
-    metric_means = [3502.971142073042, 85.00468020299446, 53.464603472173415, 0.731229006178522, 3845.033671099852, 64.71664786018896, 0.9183397951608545, 0.6103669853421727, 236.42698767152342, 233.2487797762296, 100.589953051465, 23.846228548049524, 34.359612821138484]
-    metric_stdev = [1.85780382e+03, 2.46159747e+01, 1.55011250e+01, 1.46940730e-01, 2.10144664e+03, 1.64886892e+01, 5.45856614e-02, 9.06750294e-02, 6.45156794e+01, 6.17974799e+01, 2.93619892e+01, 6.94590854e+00, 1.92704459e+01]
-    nuclei_means = [429.29368823387625, 450.62477187424673, 76.27442670437136, 27.91251776669599, 18.498285917806736, 0.7022634386169229, 0.7163965729747223, 0.9515115374290878, 22.34525824686273]
-    nuclei_stdev = [3.20191002e+02, 3.39974166e+02, 2.51591279e+01, 9.05870226e+00, 6.33460309e+00, 1.54504718e-01, 7.60154292e-02, 2.61432521e-02, 6.87627327e+00]
-    energy_means = [3502.46273207, 211.98549232, 69.32343727, 144.4087803 ]
+    metric_means = [
+        3502.971142073042,
+        85.00468020299446,
+        53.464603472173415,
+        0.731229006178522,
+        3845.033671099852,
+        64.71664786018896,
+        0.9183397951608545,
+        0.6103669853421727,
+        236.42698767152342,
+        233.2487797762296,
+        100.589953051465,
+        23.846228548049524,
+        34.359612821138484,
+    ]
+    metric_stdev = [
+        1.85780382e03,
+        2.46159747e01,
+        1.55011250e01,
+        1.46940730e-01,
+        2.10144664e03,
+        1.64886892e01,
+        5.45856614e-02,
+        9.06750294e-02,
+        6.45156794e01,
+        6.17974799e01,
+        2.93619892e01,
+        6.94590854e00,
+        1.92704459e01,
+    ]
+    nuclei_means = [
+        429.29368823387625,
+        450.62477187424673,
+        76.27442670437136,
+        27.91251776669599,
+        18.498285917806736,
+        0.7022634386169229,
+        0.7163965729747223,
+        0.9515115374290878,
+        22.34525824686273,
+    ]
+    nuclei_stdev = [
+        3.20191002e02,
+        3.39974166e02,
+        2.51591279e01,
+        9.05870226e00,
+        6.33460309e00,
+        1.54504718e-01,
+        7.60154292e-02,
+        2.61432521e-02,
+        6.87627327e00,
+    ]
+    energy_means = [3502.46273207, 211.98549232, 69.32343727, 144.4087803]
     energy_stdev = [1856.88233949, 58.47988665, 59.3040725, 67.68173487]
-
 
     return_objects = []
     assert (
@@ -129,8 +176,9 @@ def load_raw_data(
         max_scale = array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
         scaled_data = scaled_data / max_scale
         # New Scaling
-        if new_scale:
-            scaled_data = rescale(df[scaled_data_columns].to_numpy(), metric_means, metric_stdev)
+        scaled_data = rescale(
+            df[scaled_data_columns].to_numpy(), metric_means, metric_stdev
+        )
         data = hstack([scaled_data, df[desired_data_columns].to_numpy()])
         return_objects.append(data)
     if include_nuclei:
@@ -187,11 +235,10 @@ def load_raw_data(
         max_scale = array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
         scaled_data = scaled_data / max_scale
         # New Scaling
-        if new_scale:
-            scaled_data = rescale(df[scaled_data_columns].to_numpy(), metric_means, metric_stdev)
-            nuclei_data = rescale(df[nuclei_columns].to_numpy(), nuclei_means, nuclei_stdev)
-        else:
-            nuclei_data = df[nuclei_columns].to_numpy()
+        scaled_data = rescale(
+            df[scaled_data_columns].to_numpy(), metric_means, metric_stdev
+        )
+        nuclei_data = rescale(df[nuclei_columns].to_numpy(), nuclei_means, nuclei_stdev)
         data = hstack(
             [
                 scaled_data,
@@ -221,10 +268,7 @@ def load_raw_data(
                 df[nuclei_columns].to_numpy(),
             ]
         )
-        if new_scale:
-            nuclei_data = rescale(df[nuclei_columns].to_numpy(), nuclei_means, nuclei_stdev)
-        else:
-            nuclei_data =df[nuclei_columns].to_numpy()
+        nuclei_data = rescale(df[nuclei_columns].to_numpy(), nuclei_means, nuclei_stdev)
         data = hstack(
             [
                 df[desired_data_columns].to_numpy(),
@@ -259,8 +303,7 @@ def load_raw_data(
         data = nload(base_path + "/Energetics.npy")
         max_scale = array([26_000, 700, 550, 650])
         scaled_data = data / max_scale
-        if new_scale:
-            scaled_data = rescale(data, energy_means, energy_stdev)
+        scaled_data = rescale(data, energy_means, energy_stdev)
         return_objects.append(scaled_data)
     if include_metricenergetics:
         from numpy import load as nload
@@ -268,8 +311,7 @@ def load_raw_data(
         data = nload(base_path + "/Energetics.npy")
         max_scale = array([26_000, 700, 550, 650])
         nrg_data = data / max_scale
-        if new_scale:
-            nrg_data = rescale(data, energy_means, energy_stdev)
+        nrg_data = rescale(data, energy_means, energy_stdev)
         import pandas as pd
 
         scaled_data_columns = [
@@ -332,7 +374,7 @@ def load_raw_data(
     return return_objects
 
 
-def load_data(base_path, meta_type, data_type, new_scale=False):
+def load_data(base_path, meta_type, data_type):
     """# Load a histology data source
     data_type: 'image' or 'metrics' or 'energetics' or 'random'
     meta_type: 'tn' or 'stage_basic' or 'stage_advanced'"""
@@ -355,38 +397,38 @@ def load_data(base_path, meta_type, data_type, new_scale=False):
     ]
     assert data_type in data_type_possibilities
     assert meta_type in meta_type_possibilities
-    #print(base_path)
+    print(base_path)
     if (data_type == "image") or (data_type == "image_vt"):
-        meta, data = load_raw_data(base_path, include_image=True, new_scale=new_scale)
+        meta, data = load_raw_data(base_path, include_image=True)
         return meta[meta_type + "_i"], data, meta["assignment"]
     elif data_type == "metrics":
-        meta, data = load_raw_data(base_path, include_metrics=True, new_scale=new_scale)
+        meta, data = load_raw_data(base_path, include_metrics=True)
         return meta[meta_type + "_i"], data, meta["assignment"]
     elif data_type == "nuclei":
-        meta, data = load_raw_data(base_path, include_nuclei=True, new_scale=new_scale)
+        meta, data = load_raw_data(base_path, include_nuclei=True)
         return meta[meta_type + "_i"], data, meta["assignment"]
     elif data_type == "nuclei_only":
-        meta, data = load_raw_data(base_path, include_nuclei_only=True, new_scale=new_scale)
+        meta, data = load_raw_data(base_path, include_nuclei_only=True)
         return meta[meta_type + "_i"], data, meta["assignment"]
     elif data_type == "energetics":
-        meta, data = load_raw_data(base_path, include_energetics=True, new_scale=new_scale)
+        meta, data = load_raw_data(base_path, include_energetics=True)
         return meta[meta_type + "_i"], data, meta["assignment"]
     elif data_type == "metricenergetics":
-        meta, data = load_raw_data(base_path, include_metricenergetics=True, new_scale=new_scale)
+        meta, data = load_raw_data(base_path, include_metricenergetics=True)
         return meta[meta_type + "_i"], data, meta["assignment"]
     elif data_type == "latent":
-        meta, data = load_raw_data(base_path, include_latent=True, new_scale=new_scale)
+        meta, data = load_raw_data(base_path, include_latent=True)
         return meta[meta_type + "_i"], data, meta["assignment"]
     elif data_type == "random":
-        meta, data = load_raw_data(base_path, include_random=[True, 200, 6], new_scale=new_scale)
+        meta, data = load_raw_data(base_path, include_random=[True, 200, 6])
         return meta[meta_type + "_i"], data, meta["assignment"]
     assert False, "Should never reach here"
 
 
-def load_data_bank(base_paths, meta_type, data_type, new_scale=False):
+def load_data_bank(base_paths, meta_type, data_type):
     data = []
     for base_path in base_paths:
-        m, d, a = load_data(base_path, meta_type, data_type, new_scale=new_scale)
+        m, d, a = load_data(base_path, meta_type, data_type)
         if m < 0:
             continue
         if len(d) == 0:
@@ -882,14 +924,13 @@ def get_data_dim(data_bank):
     return (data_bank[1][0]).shape[-1]
 
 
-def get_dataset(data_sources, config, new_scale=False):
+def get_dataset(data_sources, config):
     from torch.utils.data import ConcatDataset
 
     is_image = config["input_data_type"][: len("image")] == "image"
     data_bank = list(
         load_data_bank(
-            data_sources, config["output_data_type"], config["input_data_type"],
-            new_scale=new_scale
+            data_sources, config["output_data_type"], config["input_data_type"]
         )
     )
     kwargs = {}

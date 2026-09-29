@@ -1,8 +1,22 @@
 /*
 /**/*.*
+!.gitea/
+!.gitea/workflows/
+!.gitea/workflows/*.yaml
+!env.sh
 !pc_util
-!lib
+!src
+!examples
+!tests
+!tests/inputs/**/*.*
+tests/outputs/**/*
+!tests/outputs/.gitignore
 !/**/*.py
 !.gitignore
 !pixi.lock
 !pixi.toml
+!pyproject.toml
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+!strict.json

@@ -2,7 +2,7 @@
 channels = ["pytorch", "nvidia", "conda-forge"]
 channel-priority = "disabled"
 description = "Add a short description here"
-name = "GeneralPyTorch"
+name = "HistClass"
 platforms = ["linux-aarch64", "linux-64", "osx-64"]
 version = "0.1.0"
 
@@ -11,9 +11,14 @@ version = "0.1.0"
 [system-requirements]
 cuda = "12.5"
 
-[dependencies]
-python = "*"
+[environments]
+training = ["training"]
+
+[feature.training.dependencies]
+python = ">=3.13"
 pip = "*"
+pytorch = ">=2.10.0,<3"
+torchvision = ">=0.25.0,<0.26"
 numpy = ">=2.4.2,<3"
 matplotlib = ">=3.10.8,<4"
 scipy = ">=1.17.0,<2"
@@ -25,17 +30,19 @@ python-graphviz = ">=0.21,<0.22"
 black = ">=26.1.0,<27"
 ipykernel = "*"
 ipywidgets = "*"
+pytest = ">=9.0.2,<10"
+ipython = ">=9.10.0,<10"
+pandera = ">=0.29.0,<0.30"
+paramiko = ">=4.0.0,<5"
+python-dotenv = ">=1.2.1,<2"
 
-[pypi-dependencies]
-
-[environments]
-training = ["training"]
-
-[feature.training.dependencies]
-pytorch = ">=2.10.0,<3"
-torchvision = ">=0.25.0,<0.26"
+[feature.training.pypi-dependencies]
+histclass = { path =  '.', editable = true }
 
 [feature.training.tasks]
-classifier = {cmd = "python3 Run.py"}
-#roc = {cmd = "python3 LoadBest.py"}
-roc = {cmd = "python3 BoxBest.py"}
+classifier = {cmd = "python3 examples/Run.py"}
+train = {cmd = "python3 examples/TrainModel.py"}
+roc = {cmd = "python3 examples/BoxBest.py"}
+test = {cmd = "pytest"}
+typing = {cmd = "pyright -p strict.json"}
+format = {cmd = "black src tests"}
