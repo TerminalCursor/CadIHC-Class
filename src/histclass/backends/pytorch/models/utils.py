@@ -8,7 +8,7 @@ from .vit import ViTModel
 from .gru import GruModel
 from .interface import PyTorchModel
 from torch.nn.functional import elu
-from typing import Dict
+from typing import Dict, Tuple
 
 
 def get_model(
@@ -65,14 +65,14 @@ def load_model(
     return model.load(checkpoint_path).to(device)
 
 
-def download_model(
+def download_model_with_config(
     name: str,
     model_id: str | None = None,
     local_base: str = "./",
     remote_base: str = "./",
     use_cached: bool = True,
     metadata_only: bool = False,
-) -> PyTorchModel:
+) -> Tuple[PyTorchModel, CompleteConfig]:
     """
     Downloads a PyTorch model from a repository.
 
@@ -170,9 +170,12 @@ def download_model(
         category_type = CategoryType(data["category_type"])
         assert data_type.is_valid()
         assert category_type != CategoryType.Unknown
-    config = CompleteConfig(
-        data_type, category_type, model_type, **model_kwargs  # pyright: ignore
-    )
+    if "model_json" in data:
+        config = CompleteConfig.from_json(data["model_json"])
+    else:
+        config = CompleteConfig(
+            data_type, category_type, model_type, **model_kwargs  # pyright: ignore
+        )
 
     if metadata_only:
         # Don't do the heavy work of loading weights
@@ -183,6 +186,18 @@ def download_model(
     model.confidences = confidences
     model.accuracy = accuracy
     assert isinstance(model, PyTorchModel)
+    return model, config
+
+
+def download_model(
+    name: str,
+    model_id: str | None = None,
+    local_base: str = "./",
+    remote_base: str = "./",
+    use_cached: bool = True,
+    metadata_only: bool = False,
+) -> PyTorchModel:
+    model, _ = download_model_with_config(name, model_id, local_base, remote_base, use_cached, metadata_only)
     return model
 
 

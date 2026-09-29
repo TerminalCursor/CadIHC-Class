@@ -220,7 +220,10 @@ class TorchDataset(DatasetInterface):
             if metadata is None:
                 continue
             data = get_data(
-                source, self.data_types, metadata, classic_norm=classic_norm
+                source,
+                self.data_types,
+                metadata,
+                classic_norm=classic_norm,
             )
             if data is None:
                 continue
@@ -256,7 +259,7 @@ class TorchDataset(DatasetInterface):
                 data_frame.height = configuration.image_values.window_height
             self.data_frames.append(data_frame)
 
-    def get_dataloaders(self: Self) -> List[DataloaderT | List[DataloaderT]]:
+    def get_dataloaders(self: Self, testing: bool = False) -> List[DataloaderT | List[DataloaderT]]:
         """
         Get dataloaders.
 
@@ -269,7 +272,8 @@ class TorchDataset(DatasetInterface):
         dataloaders: List[DataloaderT | List[DataloaderT]] = []
 
         def get_dataloader(
-            usage: DataframeType | None = None, label: int | None = None
+            usage: DataframeType | None = None, label: int | None = None,
+            testing: bool = False
         ) -> Maybe[DataloaderT]:
             """
             Get dataloader for usage.
@@ -288,6 +292,18 @@ class TorchDataset(DatasetInterface):
                     for index in range(len(self.data_frames))
                     if self.data_frames[index].usage == usage
                 ]
+                if testing:
+                    N = 10
+                    n = self.data_frames[0].labels.shape[-1]
+                    sdataset = dataset # self.data_frames
+                    dataset = []
+                    for _n in range(n):
+                        c = [sdataset[index]
+                                for index in range(len(sdataset))
+                                if sdataset[index].labels[..., _n].item() == 1
+                                ]
+                        dataset = dataset + c[:N]
+                        dataset.append(c[0])
             if label is not None:
                 dataset = [
                     dataset[index]
@@ -313,23 +329,23 @@ class TorchDataset(DatasetInterface):
             return Maybe(dataloader)
 
         # Training Dataset
-        dl = get_dataloader(DataframeType.Training)
+        dl = get_dataloader(DataframeType.Training, testing=testing)
         dataloaders.append(dl.unwrap())
-        dl = get_dataloader(DataframeType.Validation)
+        dl = get_dataloader(DataframeType.Validation, testing=testing)
         dataloaders.append(dl.unwrap())
-        dl = get_dataloader()
+        dl = get_dataloader(testing=testing)
         dataloaders.append(dl.unwrap())
         n_classes = self.category_type.values()
         assert n_classes is not None
         sub_dataloaders: List[DataloaderT] = []
         for label in range(len(n_classes)):
-            dl = get_dataloader(DataframeType.Training, label)
+            dl = get_dataloader(DataframeType.Training, label, testing=testing)
             if dl.data is not None:
                 sub_dataloaders.append(dl.data)
         dataloaders.append(sub_dataloaders)
         sub_dataloaders: List[DataloaderT] = []
         for label in range(len(n_classes)):
-            dl = get_dataloader(DataframeType.Validation, label)
+            dl = get_dataloader(DataframeType.Validation, label, testing=testing)
             if dl.data is not None:
                 sub_dataloaders.append(dl.data)
         dataloaders.append(sub_dataloaders)

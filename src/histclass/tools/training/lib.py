@@ -2,6 +2,60 @@ from typing import Any, List, Tuple
 from numpy.typing import NDArray
 
 
+def matrix2acc(matrix):
+    from numpy import diag
+    return diag(matrix).sum() / matrix.sum()
+
+
+def matrix2mcc(matrix):
+    assert matrix.shape[0] == 2
+    assert matrix.shape[1] == 2
+    TP = matrix[0,0]
+    TN = matrix[1,1]
+    FP = matrix[1,0]
+    FN = matrix[0,1]
+    return ((TP * TN) - (FP * FN)) / ((TP + FP) * (TP + FN) * (TN + FP) * (TN + FN)) ** 0.5
+
+# Compute consensus on data: bootstrapped. Use the triple positive rate/ triple negative rate for confidence
+def consensus(model, dataloaders, n_samples=1000, n_rounds=1, bootstrapped=False, raw_values=False):
+    """# Get a consensus matrix"""
+    from torch import zeros_like, float32, no_grad
+    from numpy import array
+    from tqdm.auto import tqdm
+    from ...interfaces.monad.maybe import Maybe
+
+    buckets = None
+    raw_data = Maybe([]) if raw_values else Maybe()
+    with no_grad():
+        for _ in tqdm(range(n_samples)):
+            for dataloader in dataloaders:
+                # Bootstrapped means the dataloader only applies once
+                for data, label, _ in dataloader:
+                    if buckets == None:
+                        n_class = label.shape[-1]
+                        buckets = [[0 for _ in range(n_class)] for _ in range(n_class)]
+                    data = data.to(model.device)
+                    y_true = label.to(model.device)
+                    y_trues = y_true.argmax(-1)
+                    y_pred = zeros_like(y_true, dtype=float32)
+                    # Smooth over n_rounds for consensus: Max Likelyhood
+                    for _ in range(n_rounds):
+                        y_pred += model.forward(data)
+                    y_preds = y_pred.argmax(-1)
+                    for y_true, y_pred_v, y_pred in zip(y_trues, y_preds, y_pred):
+                        buckets[y_true][y_pred_v] += 1
+                        if raw_data:
+                            _v = y_true.item()
+                            raw_data.data.append((y_pred.detach().cpu().numpy().tolist()[1], _v))
+                        if bootstrapped:
+                            break
+                    if bootstrapped:
+                        break
+    if raw_data:
+        return array(buckets), raw_data.data
+    return array(buckets)
+
+
 def to_arr(data: List[Tuple[Any]] | NDArray[Any]) -> NDArray[Any]:
     """
     Cast a datatype to a Numpy Array.

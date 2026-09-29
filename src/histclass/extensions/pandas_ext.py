@@ -45,7 +45,7 @@ def get_unique(self: DataFrame | Series, column: str | None = None) -> NDArray[A
     return unique(self)
 
 
-def get_enumerate(self: Series) -> Dict[int, Any]:
+def get_enumerate(self: Series) -> Dict[Any, int]:
     """
     Enumerate unique values in a series.
 
@@ -53,7 +53,7 @@ def get_enumerate(self: Series) -> Dict[int, Any]:
         self (Series): Input series
 
     Returns:
-        Dict[int, Any]: Dictionary with enumated unique values
+        Dict[Any, int]: Dictionary with enumated unique values
     """
     values = self.unique()
     return {v: i for i, v in enumerate(values)}

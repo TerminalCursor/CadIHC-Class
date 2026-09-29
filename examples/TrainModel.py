@@ -5,38 +5,89 @@
 from histclass.tools.env import get_env
 from histclass.interfaces.data.types import DataTypes, CategoryType
 from histclass.interfaces.models.types import ModelType
+from matplotlib import pyplot as plt
 
 # Global Parameters
+CHECKING_COUNT = False
 LOG_LOCATION = get_env("DUMP_LOC").catch("dump/").unwrap()
+
+
+def generate_configuration_combination(
+    model_type_list,
+    data_type_list,
+    category_type_list,
+    patch_list,
+    num_ablations,
+):
+    model_type_configurations = model_type_list
+    category_type_configurations = category_type_list
+    data_type_configurations = []
+    patch_configurations = []
+    ablation_configurations = []
+    for data_type in data_type_list:
+        if data_type == DataTypes.ImageViT:
+            for patch in patch_list:
+                data_type_configurations.append(data_type)
+                patch_configurations.append(patch)
+                ablation_configurations.append([])
+        elif data_type == DataTypes.ImageCNN:
+            data_type_configurations.append(data_type)
+            patch_configurations.append(None)
+            ablation_configurations.append([])
+        else:
+            from itertools import combinations
+
+            columns = data_type.dimensionality()
+            ablations = combinations(range(columns), num_ablations)
+            for ablation in ablations:
+                data_type_configurations.append(data_type)
+                patch_configurations.append(None)
+                the_ablation = list(ablation)
+                ablation_configurations.append(the_ablation)
+    return (
+        model_type_configurations,
+        category_type_configurations,
+        (data_type_configurations, patch_configurations, ablation_configurations),
+    )
 
 MODEL_TYPES = [
     ModelType.Attention,
     # ModelType.Recurrent,
 ]
 DATA_TYPES = [
-    # DataTypes.Morphology | DataTypes.Nuclei,
-    # DataTypes.Morphology | DataTypes.Energetics,
-    # DataTypes.Latent,
-    # DataTypes.Nuclei,
-    # DataTypes.Morphology,
-    # DataTypes.Energetics,
-    DataTypes.ImageCNN,
+    #DataTypes.Morphology | DataTypes.Nuclei,
+    #DataTypes.Morphology | DataTypes.Energetics,
+    #DataTypes.Morphology,
+    #DataTypes.Latent,
+    #DataTypes.Nuclei,
+    #DataTypes.Energetics,
+    #DataTypes.ImageCNN,
     DataTypes.ImageViT,
 ]
 CATEGORY_TYPES = [
     CategoryType.TripleNegative,
-    CategoryType.BasicStage,
-    CategoryType.Grade,
+    #CategoryType.BasicStage,
+    #CategoryType.Grade,
+    #CategoryType.BinaryStage,
+    #CategoryType.BinaryGrade,
 ]
-PATCHES = [128, 256, 512]
+PATCHES = [1024] #[128, 256, 512]
+
+M_COMBOS, C_COMBOS, D_COMBOS = generate_configuration_combination(
+    MODEL_TYPES, DATA_TYPES, CATEGORY_TYPES, PATCHES, num_ablations=0
+)
+DN_COMBOS = range(len(D_COMBOS[0]))
 
 from histclass.tools.slurm import get_sat_id
 from itertools import product
 
-NUMBER_ITERATIONS = 10
+NUMBER_ITERATIONS = 30
 training_combinations = list(
-    product(range(NUMBER_ITERATIONS), MODEL_TYPES, DATA_TYPES, CATEGORY_TYPES, PATCHES)
+    product(range(NUMBER_ITERATIONS), M_COMBOS, DN_COMBOS, C_COMBOS)
 )
+print(len(training_combinations))
+assert not CHECKING_COUNT
+
 # Slurm Array Task ID
 SATID = get_sat_id()
 if SATID is not None:
@@ -44,11 +95,14 @@ if SATID is not None:
 else:
     training_combinations = list(training_combinations)
 
-_, MODEL_TYPE, DATA_TYPE, CATEGORY_TYPE, PATCH = training_combinations[0]
-
-if DATA_TYPE != DataTypes.ImageViT:
-    if PATCH != 128:
-        exit(0)
+_, MODEL_TYPE, DN_IDX, CATEGORY_TYPE = training_combinations[0]
+DATA_TYPE = D_COMBOS[0][DN_IDX]
+PATCH = D_COMBOS[1][DN_IDX]
+#REMOVE_COLUMNS = D_COMBOS[2][DN_IDX]
+#
+#num_columns = DATA_TYPE.dimensionality()
+#for v in REMOVE_COLUMNS:
+#    assert v < num_columns, "Column does not exist"
 
 from histclass.tools.configuration import load_config
 from histclass.tools.training.lib import early_exit_detector
@@ -64,13 +118,25 @@ logger = Logger(LOG_LOCATION)
 
 # Configuration
 config = load_config(DATA_TYPE, CATEGORY_TYPE, MODEL_TYPE, patches=PATCH)
-# config.loss_fn = "cross_entropy"
-config.loss_fn = "mse_loss"
+#config.loss_fn = "cross_entropy"
+#config.loss_fn = "mse_loss"
 config.loss_fn = "focal_loss"
-config.optimizer = "Adam"
-config.batch_size = 8
+config.optimizer = "AdamW"
+config.batch_size = 32
 config.learning_rate = 1e-5
-config.early_exit_config.kwargs["lookback"] = 1_500
+config.epochs = 30_000
+config.early_exit_config.kwargs["lookback"] = 3_000
+if config.pointcloud_config is not None:
+    config.pointcloud_config.n_blocks = 2
+elif config.vision_transformer_config is not None:
+    config.vision_transformer_config.hidden_dim = 256
+    config.vision_transformer_config.mlp_dim = 256
+if DATA_TYPE == DataTypes.ImageCNN:
+    assert config.image_values is not None
+    config.image_values.window_width /= 2
+    config.image_values.window_width = int(config.image_values.window_width)
+    config.image_values.window_height /= 2
+    config.image_values.window_height = int(config.image_values.window_height)
 loss_fn = get_loss(config).unwrap()
 optim = get_optimizer(config).unwrap()
 
@@ -137,6 +203,18 @@ for epoch in tqdm(range(config.epochs)):
         break
 logger.echo_stdout = True
 
+epochs = epoch_metrics[0]
+t_losses, v_losses = zip(*epoch_metrics[1])
+plt.clf()
+plt.plot(epochs, t_losses)
+plt.plot(epochs, v_losses)
+plt.savefig("outputs/losses.png")
+t_losses, v_losses = zip(*epoch_metrics[2])
+plt.clf()
+plt.plot(epochs, t_losses)
+plt.plot(epochs, v_losses)
+plt.savefig("outputs/accuracies.png")
+
 # Posttraining Metrics
 epoch = epoch + 1
 t_loss, t_acc, t_mat = model.eval_epoch(t_dataloader, loss_fn)
@@ -147,14 +225,14 @@ epoch_metrics[1].append((t_loss, v_loss))
 epoch_metrics[2].append((t_acc, v_acc))
 epoch_metrics[3].append((t_mat, v_mat))
 
-logger.db_add(
-    total_accuracy=T_acc,
-    training_accuracy=t_acc,
-    validation_accuracy=v_acc,
-    total_raw=T_mat.tolist(),
-    training_raw=t_mat.tolist(),
-    validation_raw=v_mat.tolist(),
-).db_write()
+## logger.db_add(
+##     total_accuracy=T_acc,
+##     training_accuracy=t_acc,
+##     validation_accuracy=v_acc,
+##     total_raw=T_mat.tolist(),
+##     training_raw=t_mat.tolist(),
+##     validation_raw=v_mat.tolist(),
+## ).db_write()
 epochs = array(epoch_metrics[0])
 losses = array(epoch_metrics[1])
 accuracies = array(epoch_metrics[2])
@@ -256,6 +334,14 @@ logger.addnl(str(buckets))
     logger.addnl(str(diag(buckets[idx, ...]).sum() / buckets[idx, ...].sum()))
     for idx in range(2)
 ]
+t_acc, v_acc = [
+    float(diag(buckets[idx, ...]).sum() / buckets[idx, ...].sum())
+    for idx in range(2)
+]
+logger.db_add(
+    training_accuracy=t_acc,
+    validation_accuracy=v_acc,
+)
 
 logger.addnl("Bootstrapped Consensus Accuracies")
 buckets = array(
@@ -271,7 +357,16 @@ logger.addnl(str(buckets))
     logger.addnl(str(diag(buckets[idx, ...]).sum() / buckets[idx, ...].sum()))
     for idx in range(2)
 ]
+t_acc, v_acc = [
+    float(diag(buckets[idx, ...]).sum() / buckets[idx, ...].sum())
+    for idx in range(2)
+]
+logger.db_add(
+    training_accuracy_c=t_acc,
+    validation_accuracy_c=v_acc,
+)
 
+logger.db_write()
 model.save(f"{LOG_LOCATION}/models/{config.model_name}-{logger.timestamp}.pth")
 # from histclass.backends.pytorch.models.utils import upload_model
 # upload_model(model, f"{config.model_name}")

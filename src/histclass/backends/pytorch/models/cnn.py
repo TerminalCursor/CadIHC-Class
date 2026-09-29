@@ -3,8 +3,8 @@ from ....interfaces.data.types import DataTypes, CategoryType
 from ....interfaces.models.types import ModelType
 from ....interfaces.models.types import LossT, OptimizerT
 from .interface import PyTorchModel
-from ..types import ActivationT
-from typing import Self
+from ..types import ActivationT, DataloaderT
+from typing import Self, Any
 from torch.nn import Module, Sequential
 from torch import Tensor
 from torch.nn.functional import elu
@@ -136,3 +136,84 @@ class CnnModel(PyTorchModel):
         self.data_types = configuration.input_data_types
         self.category_type = configuration.output_data_type
         self.model = SimpleCNN(n_classes, activation=activation)
+
+    def embed(self: Self, x: Tensor | DataloaderT, **kwargs: Any) -> Any:
+        """
+        Embed data from a model
+
+        Args:
+            x: Input
+            kwargs: Embedding Arguments
+
+        Returns:
+            Any
+        """
+        from torch import no_grad
+        from numpy import concatenate
+
+        with no_grad():
+            if type(x) == Tensor:
+                if len(x.shape) == 3:
+                    x = x[None, ...]
+                x = x.to(device=self.device, dtype=self.dtype)
+            else:
+                values = []
+                labels = []
+                for data in x:
+                    _x = data[0]
+                    _y = data[1]
+                    values.append(self.embed(_x, **kwargs)[0])
+                    labels.append(_y.argmax(-1).cpu().numpy())
+                return concatenate(values), concatenate(labels)
+            embedding = self.model.features(x)  # pyright: ignore
+            embedding = embedding.reshape(-1, embedding.shape[1]).cpu().numpy()
+            return embedding, None
+
+    def visualize(self: Self, x: Any, **kwargs: Any) -> Any:
+        """
+        Visualize a model
+
+        Args:
+            x: Input
+            kwargs: Visualization Arguments
+
+        Returns:
+            Data
+        """
+        from torch import no_grad
+        from numpy import concatenate
+
+        with no_grad():
+            if type(x) == Tensor:
+                if len(x.shape) == 3:
+                    x = x[None, ...]
+                x = x.to(device=self.device, dtype=self.dtype)
+            else:
+                dataes = []
+                values = []
+                labels = []
+                for data in x:
+                    _x = data[0]
+                    _y = data[1]
+                    out = self.visualize(_x, **kwargs)
+                    dataes.append(out[0])
+                    values.append(out[1])
+                    labels.append(_y.argmax(-1).cpu().numpy())
+                return concatenate(dataes), concatenate(values), concatenate(labels)
+            n_levels = 1
+            if "n_levels" in kwargs.keys():
+                n_levels = kwargs["n_levels"]
+                assert isinstance(n_levels, int)
+                n_levels = (
+                    n_levels
+                    if n_levels < len(self.model.features)  # pyright: ignore
+                    else len(self.model.features) - 1  # pyright: ignore
+                )
+            z = x
+            for level in range(n_levels):
+                z = self.model.features[level](z)  # pyright: ignore
+            visual = z
+            _x = x.cpu().numpy().transpose(0, 2, 3, 1)
+            visual = visual.mean(1)
+            visual = visual.cpu().numpy()
+            return _x, visual, None

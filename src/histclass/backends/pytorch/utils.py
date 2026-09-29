@@ -1,7 +1,8 @@
 from .models.interface import PyTorchModel
-from .models.utils import download_model
+from .models.utils import download_model_with_config
 from .data.dataset import TorchDataset
-from .data.dataset import load_data_from_model
+from .data.dataset import load_data
+from ...interfaces.monad.maybe import Maybe
 from typing import Tuple
 
 
@@ -12,6 +13,7 @@ def load_torch(
     remote_base: str = "./",
     use_cached: bool = True,
     metadata_only: bool = False,
+    classic_norm_override: Maybe = Maybe(),
 ) -> Tuple[PyTorchModel, TorchDataset]:
     """
     Load and return a PyTorch model and its corresponding dataset.
@@ -31,7 +33,7 @@ def load_torch(
     Returns:
         A tuple containing the loaded PyTorch model and dataset.
     """
-    model = download_model(
+    model, config = download_model_with_config(
         model_name,
         model_id,
         local_base=local_base,
@@ -39,5 +41,10 @@ def load_torch(
         use_cached=use_cached,
         metadata_only=metadata_only,
     )
-    dataset = load_data_from_model(model, local_base=local_base)
+    cnorm = model.classic_data_norm
+    if classic_norm_override:
+        cnorm = classic_norm_override.data
+    dataset = load_data(
+        config, local_base=local_base, classic_norm=model.classic_data_norm
+    )
     return (model, dataset)

@@ -21,8 +21,11 @@ def to_ohe(index: int, maximum: int) -> Tensor:
     return one_hot(Tensor([index]).to(long), maximum)
 
 
-def get_data(
-    source: str, dtype: DataTypes, metadata: Metadata, classic_norm: bool = False
+def _get_data(
+    source: str,
+    dtype: DataTypes,
+    metadata: Metadata,
+    classic_norm: bool = False,
 ) -> Tensor | None:
     """
     Load the requested data from the source.
@@ -44,13 +47,13 @@ def get_data(
     if dtype in [DataTypes.ImageCNN, DataTypes.ImageViT]:
         # Image Data For CNN or ViT
         #  Found in /image.png
-        from matplotlib.pyplot import imread
+        from cv2 import imread
 
         if not exists(source + "/image.png"):
             return None
-        im = imread(source + "/image.png")
+        im = imread(source + "/image.png", -1)
         im = normalize_image(im)
-        return Tensor(im)
+        return im
 
     elif dtype == DataTypes.Latent:
         # Latent Data
@@ -128,6 +131,7 @@ def get_data(
         # Morphology and Nuclei Data
         #  Found in /CNJoinedMetrics.csv
         from pandas import read_csv  # pyright: ignore[reportMissingTypeStubs]
+        from torch import cat
 
         if not exists(source + "/CNJoinedMetrics.csv"):
             return None
@@ -136,7 +140,67 @@ def get_data(
             return None
         return normalize_metrics_nuclei(data, metadata, classic_norm=classic_norm)
 
+    elif dtype == DataTypes.Morphology | DataTypes.Energetics | DataTypes.Nuclei:
+        # Energetics Data
+        #  Found in /Energetics.npy
+        from numpy import load as np_load
+        from pandas import read_csv  # pyright: ignore[reportMissingTypeStubs]
+        from torch import cat
+
+        if not exists(source + "/CNJoinedMetrics.csv"):
+            return None
+        if not exists(source + "/Energetics.npy"):
+            return None
+        data_m = read_csv(source + "/CNJoinedMetrics.csv")
+        data_e = np_load(source + "/Energetics.npy")
+        if data_m.shape[0] == 0:
+            return None
+        if data_e.shape[0] == 0:
+            return None
+        data_m = normalize_metrics_nuclei(data_m, metadata, classic_norm=classic_norm)
+        data_e = normalize_energetics(data_e, metadata, classic_norm=classic_norm)
+        data_m = data_m[: min(data_e.shape[0], data_m.shape[0]), ...]
+        data_e = data_e[: min(data_e.shape[0], data_m.shape[0]), ...]
+        data = cat([data_m, data_e], dim=1)
+        return data
+
     return None
+
+
+def get_data(
+    source: str,
+    dtype: DataTypes,
+    metadata: Metadata,
+    classic_norm: bool = False,
+) -> Tensor | None:
+    """
+    Load the requested data from the source.
+    Also ablate any columns as requested.
+
+    Args:
+        source (str): The path to the data source.
+        dtype (DataTypes): The type of data to load.
+        metadata (Metadata): The metadata for the data.
+        classic_norm (bool, optional): Whether to perform classical normalization. Defaults to False.
+
+    Returns:
+        Tensor | None: The loaded data or None if it doesn't exist.
+    """
+    data = _get_data(source, dtype, metadata, classic_norm)
+    # Image Types are Not Ablation Types
+    if dtype in [DataTypes.ImageCNN, DataTypes.ImageViT]:
+        return data
+    if data is not None:
+        indicies = range(data.shape[-1])
+        ablations = dtype.get_ablations()
+        used_indicies = []
+        for index in indicies:
+            if index in ablations:
+                continue
+            used_indicies.append(index)  # pyright: ignore
+        data = data[..., used_indicies]
+        assert data.shape[-1] == dtype.dimensionality()
+    return data
 
 
 def get_metadata_labels(
@@ -177,6 +241,14 @@ def get_metadata_labels(
         label_i = metadata_dict.get("stage_advanced_i")
     elif ctype == CategoryType.Grade:
         label_i = metadata_dict.get("grade_i")
+    elif ctype == CategoryType.BinaryStage:
+        label_i = metadata_dict.get("stage_basic_i")
+        if label_i is not None:
+            label_i = int(label_i > 1)
+    elif ctype == CategoryType.BinaryGrade:
+        label_i = metadata_dict.get("grade_i")
+        if label_i is not None:
+            label_i = int(label_i > 1)
     if label_i is None:
         return None, None
     label_vs = ctype.values()

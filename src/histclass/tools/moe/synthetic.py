@@ -1,14 +1,24 @@
 from ...interfaces.moe import MoEModels, MoEData
-from typing import Self, Any, Tuple
+from typing import Self, Any, Tuple, List, Dict
 from numpy.typing import NDArray
 
 
 class SyntheticMoEModels(MoEModels):
-    def __init__(self: Self, raw: Any, acc: Any = None, n_classes: int = 2):
+    def __init__(
+        self: Self,
+        raw: Any,
+        acc: Any = None,
+        name_mapping: Dict[str, Any] | None = None,
+        n_classes: int = 2,
+    ):
         self.model_confidences = raw
         self.n_classes = n_classes
         if acc is not None:
             self.model_accuracies = acc
+        if name_mapping is None:
+            self.name_mapping = {i: i for i in range(self.model_confidences.shape[0])}
+        else:
+            self.name_mapping = name_mapping
 
     def get_accuracy(self: Self, smd: MoEData):
         from numpy import zeros
@@ -16,10 +26,10 @@ class SyntheticMoEModels(MoEModels):
         model_performances = zeros((self.model_confidences.shape[0], 2))
         for midx in range(self.model_confidences.shape[0]):
             for label in range(self.model_confidences.shape[1]):
-                sample = smd.sample(model=midx, label=label, one=False)
+                sample = smd.sample(model=midx, label=label)
                 if sample is None:
                     continue
-                prob, _m, l = sample
+                prob, _m, l, _ = sample
                 lp = prob.argmax(-1)
                 tp = lp == l
                 model_performances[midx, 0] += tp.sum()
@@ -39,23 +49,19 @@ class SyntheticMoEModels(MoEModels):
 
 class SyntheticMoEData(MoEData):
     def sample(
-        self: Self, model: Any = None, label: Any = None, one: bool = True
-    ) -> Tuple[NDArray[Any], NDArray[Any], NDArray[Any]]:
+        self: Self, model: Any = None, label: Any = None
+    ) -> Tuple[NDArray[Any], List[Any], Any, Any]:
         from numpy import array
-        from numpy.random import choice
 
         data = self.data
         if model is not None:
             data = data[data[..., 0] == model]
         if label is not None:
             data = data[data[..., 1] == label]
-        if one:
-            selected = choice(data.shape[0])  # pyright: ignore
-            data = data[[selected], ...]
         probs = data[..., -self.n_classes :]
         model = array(data[..., 0])
         label = array(data[..., 1])
-        return (probs, model, label)
+        return (probs, data[..., 0].tolist(), label, "")
 
     @staticmethod
     def generate(smm: SyntheticMoEModels, n_samples: int = 100):

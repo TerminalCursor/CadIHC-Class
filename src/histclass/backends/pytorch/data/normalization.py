@@ -203,13 +203,17 @@ def normalize_nuclei(
     from numpy import array
 
     data_columns = array(normalization_attributes["nuclei"]["columns"])
+    ratio = 20 / metadata.magnification
+    prescale_powers = array([2, 2, 1, 1, 1, 0, 0, 0, 1])
+    prescale = ratio**prescale_powers
     nuclei_means = array(normalization_attributes["nuclei"]["means"])
     nuclei_stdev = array(normalization_attributes["nuclei"]["stdev"])
     if classic_norm:
         return Tensor(dataframe[data_columns].to_numpy())  # pyright: ignore
     # New Scaling
+    data = dataframe[data_columns].to_numpy() / prescale
     scaled_data = _rescale(
-        dataframe[data_columns].to_numpy(),  # pyright: ignore
+        data,
         nuclei_means,
         nuclei_stdev,
     )
