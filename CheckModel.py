@@ -1,0 +1,329 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+from datetime import datetime
+from pc_util import *
+import torch
+import torch.nn.functional as F
+from glob import glob
+import numpy as np
+from matplotlib import pyplot as plt
+from pandas import DataFrame
+import pandas as pd
+from json import dumps
+from tqdm.auto import tqdm
+import pickle
+
+tqdm = lambda x, *args, **kwargs: x
+
+data_sources = sorted(glob("../Datasets/HT-*/"))
+# loc = "dump/models/nuclei_classifier_stage_basic-20260201-234551-857813.pth"
+# loc = "models_cqls/energetics_classifier_tn-20260205-192935-286827.pth"
+# loc = "models_cqls/image_vt_classifier_stage_basic-20260208-015352-598828.pth"
+
+from lib.extensions.glob_ext import globs
+from lib.tools.env import get_env
+from lib.extensions.sqlite3_ext import legacy_sql_load as sql_load
+
+BASE = get_env("DATA_BASE")
+BASE = BASE.catch("dump/").unwrap()
+
+SQLITE_FILE = f"{BASE}Results.db"
+results_df = sql_load(SQLITE_FILE, "RESULTS")
+
+
+def metric(df, x_var, y_var):
+    """# A standard L2 metric but the distance from (1,1)"""
+    df["XY"] = ((1 - df[[x_var, y_var]]) ** 2.0).sum(axis=1)
+    # max_row = df.loc[df["XY"] == df["XY"].min()].copy()
+    max_row = df.copy().sort_values(by="XY", ascending=True)
+    return max_row
+
+
+def parse(model_file, BEST):
+    from sqlite3 import connect
+    import pandas as pd
+
+    base = model_file.split("/")[-1]
+    other = "-".join(base.split("-")[1:]).split(".")[0]
+    base = base.split("-")[0]
+    dtype, mtype = base.split("_classifier_")
+    con = connect(f"{BEST}Results.db")
+    df = pd.read_sql_query(f"SELECT * FROM RESULTS WHERE TIMESTAMP = '{other}'", con)
+    con.close()
+    patches = None
+    if df.shape[0] == 1:
+        dtype = df["NAME"].head(1).item()
+        mtype = df["CATEGORY"].head(1).item()
+    if dtype[: len("image_vt")] == "image_vt":
+        patches = int(dtype[len("image_vt") :])
+        dtype = "image_vt"
+    return dtype, mtype, patches, other
+
+
+def load_config(data_type, meta_type, patches):
+    config = {
+        "input_data_type": data_type,
+        "output_data_type": meta_type,
+        "epochs": 20_000,
+        "learning_rate": 5e-6,
+        "device": "cuda",
+        "batch_size": 8,
+        "train_val_split": 0.8,
+        "loss_fn": "mse_loss",
+        "image_values": {
+            "window_width": 1920,
+            "window_height": 2560,
+        },
+        "pointcloud_values": {
+            "max_points": 96,
+            "min_points": 64,
+            "dropout": 0.15,
+            "dropout_output": False,
+            "n_ff_nodes": 32,
+            "n_ff_layers": 3,
+        },
+        "early_exit_kwargs": {
+            "start_after": 100,
+            "lookback": 600,
+            "p_cutoff": 0.05,
+            "on_validation": True,
+        },
+        "early_exit_max_failures": 200,
+        "vision_transformer_config": {
+            "image_size": patches,
+            "patch_size": 16,
+            "num_layers": 4,
+            "num_heads": 4,
+            "hidden_dim": 16,
+            "mlp_dim": 16,
+            "dropout": 0.05,
+            "attention_dropout": 0.05,
+        },
+    }
+    if config["input_data_type"] == "image_vt":
+        assert patches is not None
+        config["image_values"]["window_width"] = config["vision_transformer_config"][
+            "image_size"
+        ]
+        config["image_values"]["window_height"] = config["vision_transformer_config"][
+            "image_size"
+        ]
+    if config["input_data_type"] in [
+        "metrics",
+        "energetics",
+        "metricenergetics",
+        "latent",
+        "random",
+    ]:
+        # Point Cloud Model
+        del config["image_values"]
+        del config["vision_transformer_config"]
+    elif config["input_data_type"] == "image":
+        del config["vision_transformer_config"]
+        del config["pointcloud_values"]
+    elif config["input_data_type"] == "image_vt":
+        del config["pointcloud_values"]
+    return config
+
+
+def model_load(model, checkpoint_file):
+    from torch import load
+
+    checkpoint = load(checkpoint_file)
+    return model.load_state_dict(checkpoint)
+
+
+def model_forward(model, data):
+    with torch.no_grad():
+        out = model(data)
+        if not np.isclose(out.sum().item(), 1):
+            out = F.softmax(out, dim=1)
+        return out
+
+
+def dataset_length(dataloader):
+    return len(dataloader.dataset)
+
+
+def get_data(dataloader, index, label_indices=[0]):
+    data, *labels = dataloader.dataset[index]
+    data = data[None, ...]
+    return data, [labels[idx] for idx in label_indices]
+
+
+def scores(model, datasets, n_class=3, n_tests=1, consensus=1):
+    from sklearn.metrics import roc_auc_score
+    from torch.utils.data import ConcatDataset
+    from numpy.random import randint
+
+    roc_results = []
+    for data_index in range(n_class):
+        dataset = [
+                datasets[idx] for idx in range(len(datasets))
+                if datasets[idx].meta.item() == data_index
+        ]
+        if len(dataset) == 0:
+            continue
+        dataset = ConcatDataset(dataset)
+        for _ in range(n_tests):
+            label_probs = []
+            label = -1
+            for _ in range(consensus):
+                data, label = dataset[randint(len(dataset))]
+                data = data[None,...]
+                label = label[None,...]
+                label = int(label[0].item())
+                label_prob = model_forward(model, data)
+                label_prob = label_prob.cpu().numpy().flatten()
+                label_probs.append(label_prob)
+            label_probs = np.array(label_probs)
+            label_probs = label_probs / consensus
+            label_prob = label_probs.sum(axis=0)
+            assert label_prob.shape[-1] == n_class
+            label_prob = [float(v) for v in [*label_prob]]
+            #print(label)
+            roc_results.append((label, *label_prob))
+        #print(roc_results)
+    #print(roc_results)
+    roc_results = np.array(roc_results)
+    y_true = roc_results[:, 0]
+    y_pred_raw = roc_results[:, 1:]
+    y_pred = y_pred_raw.argmax(axis=1)
+    #print(np.unique(y_true, return_counts=True))
+    #print(np.unique(y_pred, return_counts=True))
+    aucs = []
+    label_scores = []
+    matrix_results = np.zeros((y_pred_raw.shape[-1], y_pred_raw.shape[-1]), dtype=int)
+    for (y_t, y_p) in zip(y_true, y_pred):
+        matrix_results[int(y_t), int(y_p)] += 1
+    for label in range(y_pred_raw.shape[-1]):
+        auc = np.nan
+        if (y_true == label).sum() > 0:
+            auc = roc_auc_score(y_true == label, y_pred_raw[:, label])
+        tp = ((y_true == label) & (y_pred == label)).sum()
+        fp = ((y_true != label) & (y_pred == label)).sum()
+        tn = ((y_true != label) & (y_pred != label)).sum()
+        fn = ((y_true == label) & (y_pred != label)).sum()
+        aucs.append((float(auc),))
+        label_scores.append((int(tp), int(fp), int(tn), int(fn)))
+    return aucs, label_scores, np.diag(matrix_results).sum() / matrix_results.sum()
+
+
+def find_best(x_var: str, y_var: str, category: str, results_df: DataFrame, n=7):
+    from pandas import concat
+
+    metric_name = "L2Q"
+    results_df = results_df.filter_on("CATEGORY", category)
+    if results_df.shape[0] == 0:
+        return
+
+    # New columns
+    results_df["MODEL"] = results_df["NAME"].map(results_df["NAME"].enumerate())
+
+    M = results_df.get("NAME")
+    models = M.unique()  # pyright: ignore
+    rows = []
+    for m_idx, model in enumerate(models):
+        df = results_df.filter_on("NAME", model)
+        max_row = metric(df, x_var, y_var)
+        max_row = max_row.head(n)
+        rows.append(max_row)
+    return concat(rows)
+
+
+data_labels = ["v", "t"]
+data_labels = ["v"]
+categories = ["stage_basic", "grade", "tn"]
+categories = ["stage_basic", "tn"]
+consensi = [9,1]
+#categories = ["grade"]
+data_assoc = {c: {tv: {c: {} for c in categories} for tv in data_labels} for c in consensi}
+timestamp = "dump.new/models/nuclei_classifier_stage_basic-20260225-221641-829118.pth"
+for c in consensi:
+    category = "stage_basic"
+    timestamp = "20260225-221641-829118"
+    data_sets = { data_label: [] for data_label in data_labels }
+    file_l = globs(f"{BASE}*{timestamp}.pth")
+    if len(file_l) == 0:
+        file_l = globs(f"{BASE}*/*{timestamp}.pth")
+    assert len(file_l) == 1, f"{BASE}*/*{timestamp}.pth not found!"
+    loc = file_l[0]
+    data_type, meta_type, patches, ext = parse(loc, f"{BASE}")
+    
+    config = load_config(data_type, meta_type, patches)
+    
+    new_scale = False
+    reference_day = datetime.strptime("20260217", "%Y%m%d")
+    the_day = datetime.strptime(timestamp.split("-")[0], "%Y%m%d")
+    print(timestamp)
+    new_scale = reference_day <= the_day
+    reference_day2 = datetime.strptime("20260224", "%Y%m%d")
+    new_scale = (reference_day <= the_day) & (the_day <= reference_day2)
+    histology_dataset, N_data, N_class, histology_datasets = get_dataset(
+        data_sources, config, new_scale=new_scale
+    )
+    
+    model = get_model(config, N_data, N_class)
+    model_load(model, loc)
+    
+    data_sets["t"] = [histology_dataset.datasets[idx] 
+            for idx in range(len(histology_dataset.datasets))
+            if histology_dataset.datasets[idx].assignment == "training"]
+    data_sets["v"] = [histology_dataset.datasets[idx] 
+            for idx in range(len(histology_dataset.datasets))
+            if histology_dataset.datasets[idx].assignment == "validation"]
+    for data_label in tqdm(data_labels, leave=False):
+    
+        N_tests = 100
+    
+        # Compute RoC curves for each label
+        patches = "" if patches is None else f"_{patches}"
+        #print(meta_type)
+        n_class = 2 if meta_type == "tn" else 3
+        aucs, counts, total_acc = scores(model, data_sets[data_label], n_class=n_class, n_tests=N_tests, consensus=c)
+        print(data_label, data_type, meta_type, c, total_acc)
+        # tp, fp, tn, fn
+        counts = np.array(counts)
+        aucs = np.array(aucs)
+        sensitivity = counts[:, [0]] / (counts[:, [0]] + counts[:, [1]])
+        specificity = counts[:, [2]] / (counts[:, [2]] + counts[:, [3]])
+        jaccard = counts[:, [0]] / (counts[:, [0]] + counts[:, [1]] + counts[:, [3]])
+        f1 = 2*counts[:, [0]] / (2*counts[:, [0]] + counts[:, [1]] + counts[:, [3]])
+        score = np.hstack([aucs, sensitivity, specificity, jaccard, f1]).T
+        #print(aucs)
+        #print(counts)
+        #print(counts.shape)
+        #print(score)
+        #print(score.shape)
+        counts = counts.tolist()
+        score = score.tolist()
+        if data_type not in data_assoc[c][data_label][meta_type].keys():
+            data_assoc[c][data_label][meta_type][data_type] = {
+                "counts": [],
+                "total_accuracy": [],
+                "score": {
+                    "auc": [],
+                    "tpr": [],
+                    "tnr": [],
+                    "acc": [],
+                    "ef1": [],
+                },
+            }
+        data_assoc[c][data_label][meta_type][data_type]["counts"].append(counts)
+        data_assoc[c][data_label][meta_type][data_type]["total_accuracy"].append(total_acc)
+        data_assoc[c][data_label][meta_type][data_type]["score"]["auc"].append(
+            score[0][:]
+        )
+        data_assoc[c][data_label][meta_type][data_type]["score"]["tpr"].append(
+            score[1][:]
+        )
+        data_assoc[c][data_label][meta_type][data_type]["score"]["tnr"].append(
+            score[2][:]
+        )
+        data_assoc[c][data_label][meta_type][data_type]["score"]["acc"].append(
+            score[3][:]
+        )
+        data_assoc[c][data_label][meta_type][data_type]["score"]["ef1"].append(
+            score[4][:]
+        )

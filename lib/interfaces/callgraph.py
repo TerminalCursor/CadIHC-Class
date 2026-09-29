@@ -2,32 +2,22 @@ from typing import List, Self, Callable, Any
 
 
 class Callgraph:
-    """# Callgraph Interface
-
-    add: Add data to callgraph
-    clear: Reset callgraph
-    save: Save callgraph
-    toggle: Toggle if callgraph should record
-    __call__: Allow calling functions with callgraph enabled
-    fun_follow: Save total function callgraph to `name`
-    """
-
     data: List[str] = []
     enabled: bool = False
 
-    def add(self: Self, data: str) -> Self:
+    def add(self, data: str) -> Self:
         """# Add Data To Callgraph"""
         raise NotImplementedError("Implement me!")
 
-    def clear(self: Self) -> Self:
+    def clear(self) -> Self:
         """# Clear Callgraph"""
         raise NotImplementedError("Implement me!")
 
-    def save(self: Self, *args, **kwargs) -> Self:
+    def save(self, *args, **kwargs) -> Self:
         """# Save Callgraph"""
         raise NotImplementedError("Implement me!")
 
-    def toggle(self: Self, to: bool | None = None) -> Self:
+    def toggle(self, to: bool | None = None) -> Self:
         """# Toggle Callgraph Monitoring"""
         if to is not None:
             self.enabled = to
@@ -35,7 +25,7 @@ class Callgraph:
         self.enabled = not self.enabled
         return self
 
-    def __call__(self: Self, fptr: Callable, *args, **kwargs) -> Any:
+    def __call__(self, fptr: Callable, *args, **kwargs) -> Any:
         """# Call Function With Callgraph"""
         original_state = self.enabled
         self.toggle(to=True)
@@ -43,7 +33,7 @@ class Callgraph:
         self.toggle(to=original_state)
         return output
 
-    def func_follow(self: Self, name: str, fptr: Callable, *args, **kwargs) -> Any:
+    def func_follow(self, name: str, fptr: Callable, *args, **kwargs) -> Any:
         """# Call Function With Callgraph"""
         original_state = self.enabled
         self.toggle(to=True)

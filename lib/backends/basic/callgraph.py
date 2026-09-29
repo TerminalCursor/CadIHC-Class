@@ -3,23 +3,21 @@ from typing import Self
 
 
 class BasicCallgraph(Callgraph):
-    """# Basic Callgraph Backend"""
-
-    def add(self: Self, data: str) -> Self:
+    def add(self, data: str) -> Self:
         """# Add Data To Callgraph"""
         if not self.enabled:
             return self
         self.data.append(data)
         return self
 
-    def clear(self: Self) -> Self:
+    def clear(self) -> Self:
         """# Clear Callgraph"""
         if not self.enabled:
             return self
         self.data = []
         return self
 
-    def save(self: Self, *_args, **_kwargs) -> Self:
+    def save(self, *args, **kwargs) -> Self:
         """# Save Callgraph"""
         if not self.enabled:
             return self

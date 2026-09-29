@@ -4,10 +4,15 @@
 import os
 
 SLURM_ID = os.getenv("SLURM_ARRAY_TASK_ID")
+dump_loc="dump/"
+DUMP = os.getenv("LOG_LOC")
+if DUMP is not None:
+    dump_loc = DUMP
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader, Subset
 
 from tqdm.auto import tqdm
 import numpy as np
@@ -21,15 +26,9 @@ from pc_util import *
 import json
 from sklearn.metrics import roc_curve, RocCurveDisplay
 
+
 data_type_possibilities = [
-    "nuclei_only",
-    "metrics",
-    "nuclei",
-    "energetics",
-    "metricenergetics",
-    "latent",
-    "image",
-    "image_vt",
+    "nuclei_only", "metrics", "nuclei", "energetics", "metricenergetics", "latent",
     # "image", "image_vt",
 ]
 meta_type_possibilities = [
@@ -145,7 +144,7 @@ for _, data_type, meta_type, patches, _ in combos:
 
     # In[226]:
 
-    logger = Logger("dump/")
+    logger = Logger(dump_loc)
 
     # In[227]:
 
@@ -173,6 +172,10 @@ for _, data_type, meta_type, patches, _ in combos:
     t_dataloader, v_dataloader, histology_dataloader = train_eval_split(
         histology_dataset, config
     )
+    #t_dataset = Subset(histology_dataset, [0,1,2,3])
+    #v_dataset = Subset(histology_dataset, [0,1,2,3,4])
+    #t_dataloader = DataLoader(t_dataset, batch_size=config["batch_size"])
+    #v_dataloader = DataLoader(v_dataset, batch_size=config["batch_size"])
 
     # # Preparing the Model
 
@@ -371,5 +374,5 @@ for _, data_type, meta_type, patches, _ in combos:
 
     torch.save(
         model.state_dict(),
-        f"dump/models/{config['input_data_type']}_classifier_{head}-{logger.timestamp}.pth",
+        f"{dump_loc}/models/{config['input_data_type']}_classifier_{head}-{logger.timestamp}.pth",
     )

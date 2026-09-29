@@ -13,7 +13,6 @@ def get_sat_id():
     env_var_v = get_env("SLURM_ARRAY_TASK_ID")
 
     def index(x):
-        """# Transform data to index"""
         return int(x) - 1
 
     return env_var_v(index).data

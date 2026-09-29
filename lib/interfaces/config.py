@@ -1,7 +1,6 @@
 from ..tools.call_graph import cg
-from typing import Self, Dict, Any
-from .data.types import DataTypes, CategoryType
-from .models.types import ModelType
+from typing import List, Dict, Any
+from .data.types import DataTypes, CategoryTypes
 
 
 class PointcloudConfig:
@@ -13,13 +12,8 @@ class PointcloudConfig:
     dropout_output: bool = False
     n_ff_nodes: int = 32
     n_ff_layers: int = 3
-    n_blocks: int = 1
 
-    def __init__(self: Self, **kwargs):
-        """# Initialization
-
-        Load Any Passed Values
-        """
+    def __init__(self, **kwargs):
         cg.add("PointcloudConfig.__init__")
         if "max_points" in kwargs.keys():
             self.max_points = kwargs["max_points"]
@@ -33,10 +27,8 @@ class PointcloudConfig:
             self.n_ff_nodes = kwargs["n_ff_nodes"]
         if "n_ff_layers" in kwargs.keys():
             self.n_ff_layers = kwargs["n_ff_layers"]
-        if "n_blocks" in kwargs.keys():
-            self.n_blocks = kwargs["n_blocks"]
 
-    def to_dict(self: Self) -> dict:
+    def to_dict(self) -> dict:
         """# Serialize to Dictionary"""
         cg.add("PointcloudConfig.to_dict")
         return {
@@ -55,18 +47,14 @@ class CnnConfig:
     window_width: int = 1920
     window_height: int = 2560
 
-    def __init__(self: Self, **kwargs):
-        """# Initialization
-
-        Load Any Passed Values
-        """
+    def __init__(self, **kwargs):
         cg.add("CnnConfig.__init__")
         if "window_width" in kwargs.keys():
             self.window_width = kwargs["window_width"]
         if "window_height" in kwargs.keys():
             self.window_height = kwargs["window_height"]
 
-    def to_dict(self: Self) -> dict:
+    def to_dict(self) -> dict:
         """# Serialize to Dictionary"""
         cg.add("CnnConfig.to_dict")
         return {
@@ -87,11 +75,7 @@ class ViTConfig:
     dropout: float = 0.05
     attention_dropout: float = 0.05
 
-    def __init__(self: Self, **kwargs):
-        """# Initialization
-
-        Load Any Passed Values
-        """
+    def __init__(self, **kwargs):
         cg.add("ViTConfig.__init__")
         if "image_size" in kwargs.keys():
             self.image_size = kwargs["image_size"]
@@ -110,7 +94,7 @@ class ViTConfig:
         if "attention_dropout" in kwargs.keys():
             self.attention_dropout = kwargs["attention_dropout"]
 
-    def to_dict(self: Self) -> dict:
+    def to_dict(self) -> dict:
         """# Serialize to Dictionary"""
         cg.add("ViTConfig.to_dict")
         return {
@@ -136,7 +120,7 @@ class EarlyExitConfig:
     }
     max_failures: int = 200
 
-    def to_dict(self: Self) -> dict:
+    def to_dict(self) -> dict:
         """# Serialize to Dictionary"""
         cg.add("EarlyExitConfig.to_dict")
         return {
@@ -149,79 +133,66 @@ class CompleteConfig:
     """# Configuration"""
 
     model_name: str = ""
-    model_type: ModelType
-    input_data_types: DataTypes
-    output_data_type: CategoryType
+    input_data_types: List[DataTypes] = []
+    output_data_type: CategoryTypes = CategoryTypes.TripleNegative
     epochs: int = 20_000
     learning_rate: float = 5e-6
     device: str = "cuda"
     batch_size: int = 8
     train_val_split: float = 0.8
     loss_fn: str = "mse_loss"
-    optimizer: str = "Adam"
     early_exit_config: EarlyExitConfig = EarlyExitConfig()
     pointcloud_config: PointcloudConfig | None = None
     image_values: CnnConfig | None = None
     vision_transformer_config: ViTConfig | None = None
 
     def __init__(
-        self: Self,
-        input_data_types: DataTypes,
-        category_type: CategoryType,
-        model_type: ModelType = ModelType.Attention,
+        self,
+        input_data_types: List[DataTypes],
+        category_type: CategoryTypes,
         loss_fn="mse_loss",
-        optimizer="Adam",
         **kwargs: Dict[str, Any],
     ):
-        """# Initialization
-
-        input_data_types: DataTypes of model inputs
-        output_data_type: CategoryType of model output
-        loss_fn: Loss function name to use
-        optimizer: Optimizer name to use
-        Load Any Additional Passed Values
-        """
         cg.add("CompleteConfig.__init__")
-        self.model_type = model_type
         self.input_data_types = input_data_types
         self.output_data_type = category_type
-        assert (
-            self.input_data_types.is_valid()
-        ), f"Invalid combination!\n{input_data_types}"
-        self.model_name = (
-            self.input_data_types.to_str() + "_" + self.output_data_type.to_str()
-        )
-        if self.input_data_types in [DataTypes.ImageCNN, DataTypes.ImageViT]:
-            _kwargs = {}
-            if "cnn" in kwargs.keys():
-                _kwargs = kwargs["cnn"]
-            self.image_values = CnnConfig(**_kwargs)
-            if self.input_data_types == DataTypes.ImageViT:
+        assert len(self.input_data_types) > 0
+        if len(self.input_data_types) == 1:
+            idt = self.input_data_types[0]
+            if idt in [DataTypes.ImageCNN, DataTypes.ImageViT]:
+                _kwargs = {}
+                if "cnn" in kwargs.keys():
+                    _kwargs = kwargs["cnn"]
+                self.image_values = CnnConfig(**_kwargs)
+            else:
+                _kwargs = {}
+                if "pc" in kwargs.keys():
+                    _kwargs = kwargs["pc"]
+                self.pointcloud_config = PointcloudConfig(**_kwargs)
+            if idt == DataTypes.ImageViT:
                 _kwargs = {}
                 if "vit" in kwargs.keys():
                     _kwargs = kwargs["vit"]
                 self.vision_transformer_config = ViTConfig(**_kwargs)
-                self.image_values.window_width = (
-                    self.vision_transformer_config.image_size
-                )
-                self.image_values.window_height = (
-                    self.vision_transformer_config.image_size
-                )
         else:
+            assert DataTypes.ImageCNN.value not in [
+                dt.value for dt in self.input_data_types
+            ]
+            assert DataTypes.ImageViT.value not in [
+                dt.value for dt in self.input_data_types
+            ]
             _kwargs = {}
             if "pc" in kwargs.keys():
                 _kwargs = kwargs["pc"]
             self.pointcloud_config = PointcloudConfig(**_kwargs)
         self.loss_fn = loss_fn
-        self.optimizer = optimizer
         return
 
-    def to_dict(self: Self) -> dict:
+    def to_dict(self) -> dict:
         """# Serialize to Dictionary"""
         cg.add("CompleteConfig.to_dict")
         return_dict = {
             "model_name": self.model_name,
-            "model_type": self.model_type.to_str(),
             "input_data_types": [x.to_str() for x in self.input_data_types],
             "output_data_type": self.output_data_type.to_str(),
             "epochs": self.epochs,

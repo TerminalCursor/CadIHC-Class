@@ -8,10 +8,8 @@ from pandas import read_csv as pd_load
 from numpy import vstack as stack
 from numpy import std
 
-
 def _std(x, axis=0):
     return std(x.tolist(), axis=axis)
-
 
 data_sources = sorted(glob("../Datasets/HT-*/"))
 scaled_data_columns = [
@@ -50,8 +48,8 @@ for data_source in data_sources:
     nuclei_path = data_source + "CNJoinedMetrics.csv"
     energy_path = data_source + "Energetics.npy"
 
-    # meta_data = {}
-    # with open(meta_path, "w") as fhandle:
+    #meta_data = {}
+    #with open(meta_path, "w") as fhandle:
     #    meta_data = json_load(fhandle)
 
     metric_data = pd_load(metric_path)[scaled_data_columns]
@@ -71,9 +69,9 @@ nuclei_si = _std(nuclei_datum, axis=0)
 energy_mu = energy_datum.mean(axis=0)
 energy_si = _std(energy_datum, axis=0)
 
-normalized_metric_datum = (metric_datum - metric_mu) / metric_si
-normalized_nuclei_datum = (nuclei_datum - nuclei_mu) / nuclei_si
-normalized_energy_datum = (energy_datum - energy_mu) / energy_si
+normalized_metric_datum = (metric_datum - metric_mu)/metric_si
+normalized_nuclei_datum = (nuclei_datum - nuclei_mu)/nuclei_si
+normalized_energy_datum = (energy_datum - energy_mu)/energy_si
 
 print(metric_mu)
 print(metric_si)

@@ -1,7 +1,7 @@
 from .call_graph import cg
 
 
-def get_datestring() -> str:
+def get_datestring():
     """# Get Datestring
 
     Format is YYMMDD-hhmmss-us

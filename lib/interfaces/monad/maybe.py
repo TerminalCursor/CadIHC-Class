@@ -1,5 +1,5 @@
 from ...tools.call_graph import cg
-from typing import Self, Callable, Any
+from typing import Callable, Any
 
 
 class Maybe:
@@ -16,26 +16,19 @@ class Maybe:
     `unwrap` will assert that the data is non-nulled and return the internal data
     """
 
-    data: Any
-
-    def __init__(self: Self, data: Any | None = None):
+    def __init__(self, data: Any | None = None):
         """# Set the data"""
         cg.add("Maybe.__init__")
         self.data = data
 
-    def __call__(self: Self, fptr: Callable) -> "Maybe":
+    def __call__(self, fptr: Callable):
         """# Call a function on non-nulled data"""
         cg.add("Maybe.__call__")
         if self.data is None:
             return Maybe(None)
         return Maybe(fptr(self.data))
 
-    def __bool__(self: Self) -> bool:
-        """# Is Non-nulled?"""
-        cg.add("Maybe.__bool__")
-        return self.data is not None
-
-    def catch(self: Self, other_data: Any | None) -> "Maybe":
+    def catch(self, other_data: Any | None):
         """# Non-nulled data returns a new maybe with `other_data`
         Otherwise, return the current Maybe
         """
@@ -44,8 +37,13 @@ class Maybe:
             return Maybe(other_data)
         return self
 
-    def unwrap(self: Self) -> Any:
+    def __bool__(self):
+        """# Is Non-nulled?"""
+        cg.add("Maybe.__bool__")
+        return self.data is not None
+
+    def unwrap(self):
         """# Get the internal non-nulled data"""
         cg.add("Maybe.unwrap")
-        assert self is not None, "Empty container unwraped!"
+        assert self.data is not None
         return self.data

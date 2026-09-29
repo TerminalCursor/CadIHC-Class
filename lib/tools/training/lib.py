@@ -1,9 +1,7 @@
 from ..call_graph import cg
-from typing import List, Tuple
-from numpy.typing import NDArray
 
 
-def to_arr(data: List[Tuple] | NDArray) -> NDArray:
+def to_arr(data):
     """# Cast a datatype to a Numpy Array
 
     If already a numpy array, ignore
@@ -16,9 +14,7 @@ def to_arr(data: List[Tuple] | NDArray) -> NDArray:
     return array(data)
 
 
-def zero_slope(
-    data: List[Tuple] | NDArray, p_value: float = 0.05, alternative: str = "less"
-) -> Tuple[bool, float]:
+def zero_slope(data, p_value=0.05):
     """# Determine if data has zero slope
 
     Confidence level from `p_value`
@@ -29,11 +25,11 @@ def zero_slope(
     data = to_arr(data)
     x = range(data.shape[-1])
     y = data
-    reg_output = linregress(x, y, alternative=alternative)
-    return reg_output.pvalue > p_value, reg_output.slope  # pyright: ignore
+    reg_output = linregress(x, y)
+    return reg_output.pvalue > p_value  # pyright: ignore
 
 
-def transpose(data: List[Tuple] | NDArray) -> list | NDArray:
+def transpose(data):
     """# Transpose data
 
     Converts between:
@@ -48,9 +44,7 @@ def transpose(data: List[Tuple] | NDArray) -> list | NDArray:
     return list(zip(*data))
 
 
-def mean_near(
-    data: List[Tuple] | NDArray, value: float | int, n_std: float = 1
-) -> bool:
+def mean_near(data, value, n_std=1):
     """# Determine if the mean is near value
 
     Returns if the data is within `n_std` of the value
@@ -66,17 +60,11 @@ def mean_near(
     return d < s
 
 
-def early_exit_detector(
-    losses: List[Tuple] | NDArray,
-    start_after: int = 100,
-    lookback: int = 600,
-    p_cutoff: float = 0.05,
-    on_index: int = 0,
-) -> Tuple[bool, float]:
+def early_exit_detector(losses, t_i=100, window_len=600, p_cutoff=0.05, data_index=0):
     """# Find when loss equilibriates
 
-    Find when the `on_index` loss has a slope of zero and is linear
-    during a window of `lookback` after `start_after` iterations have occurred
+    Find when the `data_index` loss has a slope of zero and is linear
+    during a window of `window_len` after `t_i` iterations have occurred
     with a confidence of `p_cutoff`
 
     Assume `losses` is of the form
@@ -85,9 +73,8 @@ def early_exit_detector(
     cg.add("early_exit_detector")
     data = transpose(losses)
     data = to_arr(data)
-    data = data[on_index, ...]
-    data = data[start_after:, ...]
-    if len(data) < lookback:
-        return False, 0
-    data = data[-lookback:, ...]
+    data = data[data_index, ...]
+    data = data[t_i:, ...]
+    if len(data) < window_len:
+        return False
     return zero_slope(data, p_value=p_cutoff)

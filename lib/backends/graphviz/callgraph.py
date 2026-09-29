@@ -5,14 +5,11 @@ from typing import Self
 
 
 class GraphvizCallgraph(Callgraph):
-    """# Graphviz Callgraph Backend"""
-
-    def __init__(self: Self):
-        """# Initialize Graphviz Digraph"""
+    def __init__(self):
         self.graph = graphviz.Digraph(comment="Callgraph")
         self.graph.attr(rankdir="LR")
 
-    def add(self: Self, data: str) -> Self:
+    def add(self, data: str) -> Self:
         """# Add Data To Callgraph"""
         if not self.enabled:
             return self
@@ -36,7 +33,7 @@ class GraphvizCallgraph(Callgraph):
             )
         return self
 
-    def clear(self: Self) -> Self:
+    def clear(self) -> Self:
         """# Clear Callgraph"""
         if not self.enabled:
             return self
@@ -45,17 +42,9 @@ class GraphvizCallgraph(Callgraph):
         self.graph.attr(rankdir="LR")
         return self
 
-    def save(
-        self: Self, name: str, *args, view: bool = False, fmt: str = "png", **kwargs
-    ) -> Self:
-        """# Save Callgraph
-        Only saves when the callgraph is enabled
-
-        name: The name to save it to
-        view: Whether or not to show immediately
-        fmt: What format to save as
-        """
+    def save(self, name, *args, view=False, format="png", **kwargs) -> Self:
+        """# Save Callgraph"""
         if not self.enabled:
             return self
-        self.graph.render(name, *args, view=view, format=fmt, **kwargs)
+        self.graph.render(name, *args, view=view, format=format, **kwargs)
         return self

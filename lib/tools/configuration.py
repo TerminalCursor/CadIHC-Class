@@ -1,13 +1,12 @@
 from .call_graph import cg
-from ..interfaces.data.types import DataTypes, CategoryType
-from ..interfaces.models.types import ModelType
+from ..interfaces.data.types import DataTypes, CategoryTypes
 from ..interfaces.config import CompleteConfig
+from typing import List
 
 
 def load_config(
-    data_types: DataTypes,
-    category_type: CategoryType,
-    model_type: ModelType = ModelType.Attention,
+    data_types: List[DataTypes],
+    category_type: CategoryTypes,
     patches: int | None = None,
     patch_size: int = 16,
     device: str = "cuda",
@@ -23,10 +22,7 @@ def load_config(
     """
     cg.add("load_config")
     config = CompleteConfig(
-        data_types,
-        category_type,
-        model_type,
-        vit={"image_size": patches, "patch_size": patch_size},
+        data_types, category_type, vit={"patches": patches, "patch_size": patch_size}
     )
     config.device = device
     return config

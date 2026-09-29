@@ -1,76 +1,58 @@
 from ...tools.call_graph import cg
-from typing import Self, Callable, Any
 
 
 class Model:
-    """# Model Interface"""
-
-    optimizer: Callable
-    loss_fn: Callable
+    optimizer = None
+    loss_fn = None
     device = None
     dtype = None
-    model: Any
+    model = None
 
-    def __init__(self: Self, *args, **kwargs):
-        """# Model Initialization"""
+    def __init__(self):
         cg.add("Model.__init__")
         raise NotImplementedError("Implement Me!")
 
-    def set_optimizer(self: Self, optimizer: Callable) -> Self:
-        """# Optimizer for Model Training"""
+    def set_optimizer(self, optimizer):
         cg.add("Model.set_optimizer")
         self.optimizer = optimizer
         return self
 
-    def set_loss_fn(self: Self, loss_fn: Any) -> Self:
-        """# Loss Function for Model Training"""
+    def set_loss_fn(self, loss_fn):
         cg.add("Model.set_loss_fn")
         self.loss_fn = loss_fn
         return self
 
-    def set_device(self: Self, device: Any) -> Self:
-        """# Device to put Model On"""
+    def set_device(self, device):
         cg.add("Model.set_device")
         self.device = device
         return self
 
-    def set_dtype(self: Self, dtype: Any) -> Self:
-        """# Dtype for Model to use"""
+    def set_dtype(self, dtype):
         cg.add("Model.set_dtype")
         self.dtype = dtype
         return self
 
-    def train_batch(self: Self, *args, **kwargs) -> Any:
-        """# Procedure to Train on Batch"""
+    def train_batch(self, *args, **kwargs):
         cg.add("Model.train_batch")
         raise NotImplementedError("Implement Me!")
 
-    def eval_batch(self: Self, *args, **kwargs) -> Any:
-        """# Procedure to Evaluate on Batch"""
+    def eval_batch(self, *args, **kwargs):
         cg.add("Model.eval_batch")
         raise NotImplementedError("Implement Me!")
 
-    def forward(self: Self, x: Any, *args, **kwargs) -> Any:
-        """# Procedure for Forward Pass"""
+    def forward(self, x):
         cg.add("Model.forward")
         assert self.model is not None
-        return self.model.forward(x, *args, **kwargs)
+        return self.model.forward(x)
 
-    def to(self: Self, device: Any | None = None, dtype: Any | None = None) -> Self:
-        """# Move Model to Device"""
+    def to(self, device=None, dtype=None):
         cg.add("Model.to")
-        if device is not None:
-            self.set_device(device)
-        if dtype is not None:
-            self.set_dtype(dtype)
-        return self
+        raise NotImplementedError("Implement Me!")
 
-    def load(self: Self, checkpoint_path: str) -> Self:
-        """# Load Model from Checkpoint"""
+    def load(self, checkpoint_path):
         cg.add("Model.load")
         raise NotImplementedError("Implement Me!")
 
-    def save(self: Self, checkpoint_path: str) -> Self:
-        """# Save Model to Checkpoint"""
+    def save(self, checkpoint_path):
         cg.add("Model.save")
         raise NotImplementedError("Implement Me!")
