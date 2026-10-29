@@ -34,3 +34,6 @@ tests/outputs/**/*
 
 # Keep pyright type checking configuration
 !strict.json
+
+# Keep readme
+!README.md
