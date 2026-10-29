@@ -1,0 +1,19 @@
+{
+  "model_type": 0,
+  "model_type_s": "attention",
+  "data_type": 4,
+  "data_type_s": "morphology",
+  "category_type": 1,
+  "category_type_s": "tn",
+  "optimizer": 13799,
+  "loss_fn": 13799,
+  "lr": 1e-05,
+  "batch_size": 64,
+  "epochs": 13799,
+  "confidences": [
+    0.6185567010309279,
+    0.6116504854368932
+  ],
+  "accuracy": 0.615,
+  "moe_model": false
+}

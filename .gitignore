@@ -37,3 +37,7 @@ tests/outputs/**/*
 
 # Keep readme
 !README.md
+
+# Keep model files
+!ihc
+!ihc/models/classification/**/*.*

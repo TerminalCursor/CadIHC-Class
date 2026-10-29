@@ -1,0 +1,56 @@
+{
+  "model_type": 0,
+  "model_type_s": "attention",
+  "data_type": 20,
+  "data_type_s": "morphologyenergetics",
+  "category_type": 5,
+  "category_type_s": "hilostage",
+  "optimizer": "AdamW",
+  "loss_fn": "focal_loss",
+  "epochs": 20000,
+  "lr": 5e-06,
+  "batch_size": 64,
+  "use_classic": "no",
+  "model_json": {
+    "model_name": "morphologyenergetics-attention2hilostage",
+    "model_type": "attention",
+    "input_data_types": [
+      "morphology",
+      "energetics"
+    ],
+    "output_data_type": "hilostage",
+    "epochs": 20000,
+    "learning_rate": 5e-06,
+    "loss_fn": "focal_loss",
+    "batch_size": 64,
+    "train_val_split": 0.8,
+    "device": "cuda",
+    "early_exit_config": {
+      "kwargs": {
+        "start_after": 100,
+        "lookback": 1500,
+        "p_cutoff": 0.05,
+        "on_index": 1
+      },
+      "max_failures": 200
+    },
+    "ablation_config": {
+      "columns": []
+    },
+    "pointcloud_config": {
+      "max_points": 96,
+      "min_points": 64,
+      "dropout": 0.15,
+      "dropout_output": false,
+      "n_ff_nodes": 32,
+      "n_ff_layers": 3,
+      "n_blocks": 1
+    }
+  },
+  "confidences": [
+    0.6068376068376068,
+    0.6506024096385542
+  ],
+  "accuracy": 0.625,
+  "moe_model": true
+}

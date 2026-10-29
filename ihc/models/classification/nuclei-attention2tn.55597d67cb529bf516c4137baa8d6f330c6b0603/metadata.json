@@ -1,0 +1,19 @@
+{
+  "model_type": 0,
+  "model_type_s": "attention",
+  "data_type": 32,
+  "data_type_s": "nuclei",
+  "category_type": 1,
+  "category_type_s": "tn",
+  "optimizer": 4438,
+  "loss_fn": 4438,
+  "lr": 1e-05,
+  "batch_size": 64,
+  "epochs": 4438,
+  "confidences": [
+    0.6527777777777778,
+    0.5859375
+  ],
+  "accuracy": 0.61,
+  "moe_model": false
+}

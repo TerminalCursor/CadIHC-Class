@@ -1,0 +1,60 @@
+{
+  "model_type": 0,
+  "model_type_s": "attention",
+  "data_type": 2,
+  "data_type_s": "image_vt",
+  "category_type": 5,
+  "category_type_s": "hilostage",
+  "optimizer": "AdamW",
+  "loss_fn": "focal_loss",
+  "epochs": 20000,
+  "lr": 1e-06,
+  "batch_size": 32,
+  "use_classic": "no",
+  "model_json": {
+    "model_name": "image_vt-attention2hilostage",
+    "model_type": "attention",
+    "input_data_types": [
+      "image_vt"
+    ],
+    "output_data_type": "hilostage",
+    "epochs": 20000,
+    "learning_rate": 1e-06,
+    "loss_fn": "focal_loss",
+    "batch_size": 32,
+    "train_val_split": 0.8,
+    "device": "cuda",
+    "early_exit_config": {
+      "kwargs": {
+        "start_after": 100,
+        "lookback": 3000,
+        "p_cutoff": 0.05,
+        "on_index": 1
+      },
+      "max_failures": 200
+    },
+    "ablation_config": {
+      "columns": []
+    },
+    "image_values": {
+      "window_width": 512,
+      "window_height": 512
+    },
+    "vision_transformer_config": {
+      "image_size": 512,
+      "patch_size": 16,
+      "num_layers": 4,
+      "num_heads": 4,
+      "hidden_dim": 16,
+      "mlp_dim": 16,
+      "dropout": 0.05,
+      "attention_dropout": 0.05
+    }
+  },
+  "confidences": [
+    0.0,
+    0.5
+  ],
+  "accuracy": 0.5,
+  "moe_model": false
+}

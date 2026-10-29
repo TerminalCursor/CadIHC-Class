@@ -1,0 +1,21 @@
+{
+  "model_type": 0,
+  "model_type_s": "attention",
+  "data_type": 2,
+  "data_type_s": "image_vt",
+  "category_type": 1,
+  "category_type_s": "tn",
+  "optimizer": 3391,
+  "loss_fn": 3391,
+  "lr": 5e-06,
+  "batch_size": 8,
+  "epochs": 3391,
+  "use_classic": "yes",
+  "patches": 1024,
+  "confidences": [
+    0.0,
+    0.5
+  ],
+  "accuracy": 0.5,
+  "moe_model": false
+}

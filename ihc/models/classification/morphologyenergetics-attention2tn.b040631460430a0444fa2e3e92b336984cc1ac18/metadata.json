@@ -1,0 +1,19 @@
+{
+  "model_type": 0,
+  "model_type_s": "attention",
+  "data_type": 20,
+  "data_type_s": "morphologyenergetics",
+  "category_type": 1,
+  "category_type_s": "tn",
+  "optimizer": 7787,
+  "loss_fn": 7787,
+  "lr": 1e-05,
+  "batch_size": 64,
+  "epochs": 7787,
+  "confidences": [
+    0.631578947368421,
+    0.6744186046511628
+  ],
+  "accuracy": 0.65,
+  "moe_model": false
+}

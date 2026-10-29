@@ -1,0 +1,20 @@
+{
+  "model_type": 0,
+  "model_type_s": "attention",
+  "data_type": 16,
+  "data_type_s": "energetics",
+  "category_type": 1,
+  "category_type_s": "tn",
+  "optimizer": 3322,
+  "loss_fn": 3322,
+  "lr": 5e-06,
+  "batch_size": 8,
+  "epochs": 3322,
+  "use_classic": "yes",
+  "confidences": [
+    0.48951048951048953,
+    0.47368421052631576
+  ],
+  "accuracy": 0.485,
+  "moe_model": false
+}
